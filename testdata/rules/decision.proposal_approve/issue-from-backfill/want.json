@@ -1,0 +1,16 @@
+{
+  "rule": "decision.proposal_approve",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "d61ff374fbaa379fcc2b865cea1a7ba3",
+    "worker": "countersign",
+    "item": "EP-0003",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "proposal",
+    "outcome": "approve",
+    "from": "pending_approval",
+    "to": "approved",
+    "lane": "urgent"
+  }
+}

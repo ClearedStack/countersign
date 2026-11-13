@@ -1,0 +1,47 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0081"
+        }
+      ]
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "lease.timeout",
+          "code": "E_TIMEOUT",
+          "fingerprint": "5b386f43c2aa80b9"
+        }
+      ]
+    },
+    {
+      "do": "tick"
+    }
+  ],
+  "pending": [
+    "PA-0081"
+  ],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0081",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

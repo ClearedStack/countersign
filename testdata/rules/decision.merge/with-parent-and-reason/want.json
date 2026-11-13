@@ -1,0 +1,21 @@
+{
+  "rule": "decision.merge",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "46a4c1fadcde9232f4f9bf46fb149c8c",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "candidate",
+    "outcome": "merge",
+    "from": "scored",
+    "to": "merged",
+    "lane": "normal",
+    "override": true,
+    "score": 82,
+    "recommendation": "approved",
+    "reason": "It is one more check inside the sample rate toolkit, not a tool of its own.",
+    "parent": "sample-rate-toolkit"
+  }
+}

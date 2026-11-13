@@ -1,0 +1,5 @@
+{
+  "rule": "decision.park_blocker_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.park_blocker_missing PA-0001: a park needs the blocker named [fp 74f263c096e6eb72]"
+}

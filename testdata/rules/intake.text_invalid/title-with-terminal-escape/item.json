@@ -1,0 +1,9 @@
+{
+  "id": "PA-0001",
+  "kind": "candidate",
+  "state": "scored",
+  "lane": "normal",
+  "title": "Looks fine \u001b[2J\u001b[31m but is not",
+  "score": 82,
+  "recommendation": "approved"
+}

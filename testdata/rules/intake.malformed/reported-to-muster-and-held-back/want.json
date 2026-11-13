@@ -1,0 +1,83 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0020"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.malformed",
+          "code": "E_PARSE",
+          "item": "PA-0021",
+          "fingerprint": "6d090d60e03b2dff"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0021",
+          "seq": 1
+        }
+      ]
+    },
+    {
+      "do": "tick"
+    }
+  ],
+  "pending": [
+    "PA-0020"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "fail",
+        "id": "186d251a98bb8af0cce14c9bbc4a9f22",
+        "worker": "countersign",
+        "item": "PA-0021",
+        "at": "2026-01-05T10:00:00Z",
+        "code": "E_PARSE",
+        "rule": "intake.malformed",
+        "fingerprint": "6d090d60e03b2dff"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0020",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0021",
+        "status": "held_back"
+      }
+    ],
+    "ledger": [
+      {
+        "contract": "v1",
+        "call": "fail",
+        "id": "186d251a98bb8af0cce14c9bbc4a9f22",
+        "worker": "countersign",
+        "item": "PA-0021",
+        "at": "2026-01-05T10:00:00Z",
+        "code": "E_PARSE",
+        "rule": "intake.malformed",
+        "fingerprint": "6d090d60e03b2dff"
+      }
+    ],
+    "dispatched": []
+  }
+}

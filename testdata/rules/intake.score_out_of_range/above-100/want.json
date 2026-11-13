@@ -1,0 +1,16 @@
+{
+  "rule": "intake.score_out_of_range",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.score_out_of_range PA-0001: the rubric score is not between 20 and 100 [fp f251b50d15de66a7]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "d83a20ed133be5db9b302b0f7c42f127",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.score_out_of_range",
+    "fingerprint": "f251b50d15de66a7"
+  }
+}

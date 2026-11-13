@@ -1,0 +1,43 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0041",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0041",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0041",
+        "outcome": "reject",
+        "reason": "Changed my mind."
+      }
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

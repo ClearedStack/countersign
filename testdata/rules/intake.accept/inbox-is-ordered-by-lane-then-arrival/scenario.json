@@ -1,0 +1,60 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0010",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "backfill",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0011",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "EP-0010",
+        "kind": "proposal",
+        "state": "pending_approval",
+        "lane": "urgent",
+        "type": "DATA",
+        "target": "catalog/sample-rate-checker/description",
+        "body": "The description says 'calender'. It should say 'calendar'."
+      },
+      {
+        "id": "PA-0012",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0013",
+        "kind": "candidate",
+        "state": "screened-out",
+        "lane": "urgent",
+        "title": "Draft, price and submit a whole sample bid",
+        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    }
+  ]
+}

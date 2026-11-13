@@ -1,0 +1,51 @@
+{
+  "ownership": [
+    "catalog/sample-rate-checker/description",
+    "workers/sample-worker/settings/retry-limit"
+  ],
+  "items": [
+    {
+      "id": "PA-0001",
+      "kind": "candidate",
+      "state": "scored",
+      "lane": "normal",
+      "title": "Check a sample labor rate against a made-up ceiling",
+      "score": 82,
+      "recommendation": "approved"
+    },
+    {
+      "id": "PA-0002",
+      "kind": "candidate",
+      "state": "screened-out",
+      "lane": "normal",
+      "title": "Draft, price and submit a whole sample bid",
+      "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+    },
+    {
+      "id": "PA-0003",
+      "kind": "candidate",
+      "state": "scored",
+      "lane": "backfill",
+      "title": "Count the pages in a made-up proposal volume",
+      "score": 60,
+      "recommendation": "parked"
+    },
+    {
+      "id": "EP-0001",
+      "kind": "proposal",
+      "state": "pending_approval",
+      "lane": "normal",
+      "type": "DATA",
+      "target": "catalog/sample-rate-checker/description",
+      "body": "The description says 'calender'. It should say 'calendar'."
+    },
+    {
+      "id": "PA-0004",
+      "kind": "bundle",
+      "state": "scored",
+      "lane": "normal",
+      "title": "Something Countersign has no rule for"
+    }
+  ],
+  "timeouts": 1
+}

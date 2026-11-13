@@ -1,0 +1,5 @@
+{
+  "rule": "intake.field_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_missing: the item lacks a field its kind and state require [fp 4108c3dad81d57a7]"
+}

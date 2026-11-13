@@ -1,0 +1,16 @@
+{
+  "rule": "intake.field_unexpected",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_unexpected EP-0001: the item carries a field its kind and state do not allow [fp 51183c4d18a06740]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "ec2991d7b13cc3d70a773211d589bfec",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.field_unexpected",
+    "fingerprint": "51183c4d18a06740"
+  }
+}

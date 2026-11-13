@@ -1,0 +1,263 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0060"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0061"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0062"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6ed566a592928bc0f1c657c4b58a284f",
+        "worker": "countersign",
+        "item": "PA-0061",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "42e43fa7a23db6ad27f61299fbceeb11",
+        "worker": "countersign",
+        "item": "PA-0060",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.override",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "b35e3e70282ce3d3c981780d3595e90d",
+        "worker": "countersign",
+        "item": "PA-0062",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "override",
+        "from": "screened-out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.timeout",
+          "code": "E_TIMEOUT",
+          "item": "PA-0061",
+          "seq": 1,
+          "fingerprint": "126ef63e3199815f"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.timeout",
+          "code": "E_TIMEOUT",
+          "item": "PA-0061",
+          "seq": 1,
+          "fingerprint": "126ef63e3199815f"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0061",
+          "seq": 1
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0060",
+          "seq": 2
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0062",
+          "seq": 3
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6ed566a592928bc0f1c657c4b58a284f",
+        "worker": "countersign",
+        "item": "PA-0061",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "42e43fa7a23db6ad27f61299fbceeb11",
+        "worker": "countersign",
+        "item": "PA-0060",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "seq": 3,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "b35e3e70282ce3d3c981780d3595e90d",
+        "worker": "countersign",
+        "item": "PA-0062",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "override",
+        "from": "screened-out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0060",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0061",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0062",
+        "state": "observed",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6ed566a592928bc0f1c657c4b58a284f",
+        "worker": "countersign",
+        "item": "PA-0061",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "contract": "v1",
+        "call": "complete",
+        "id": "42e43fa7a23db6ad27f61299fbceeb11",
+        "worker": "countersign",
+        "item": "PA-0060",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "contract": "v1",
+        "call": "complete",
+        "id": "b35e3e70282ce3d3c981780d3595e90d",
+        "worker": "countersign",
+        "item": "PA-0062",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "candidate",
+        "outcome": "override",
+        "from": "screened-out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    ],
+    "dispatched": []
+  }
+}

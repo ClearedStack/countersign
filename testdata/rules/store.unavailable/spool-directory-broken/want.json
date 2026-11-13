@@ -1,0 +1,51 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0095"
+        }
+      ]
+    },
+    {
+      "do": "break"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "store.unavailable",
+          "code": "E_TIMEOUT",
+          "fingerprint": "5c4b2e8aa022831a"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "store.unavailable",
+      "code": "E_TIMEOUT",
+      "error": "E_TIMEOUT store.unavailable: the local spool could not be read or written [fp 5c4b2e8aa022831a]"
+    }
+  ],
+  "pending": [
+    "PA-0095"
+  ],
+  "log": [],
+  "store": "E_TIMEOUT store.unavailable: the local spool could not be read or written [fp 5c4b2e8aa022831a]",
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0095",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

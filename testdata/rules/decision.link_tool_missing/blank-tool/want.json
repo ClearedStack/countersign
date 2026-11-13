@@ -1,0 +1,5 @@
+{
+  "rule": "decision.link_tool_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.link_tool_missing PA-0001: a link needs the existing tool named [fp 567946e6b1265dd7]"
+}

@@ -1,0 +1,12 @@
+# Countersign is built straight from source with ko. There is no Dockerfile.
+# Build an image file without publishing it:
+#   KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=false --tarball countersign.tar
+builds:
+  - id: countersign
+    main: ./cmd/countersign
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w

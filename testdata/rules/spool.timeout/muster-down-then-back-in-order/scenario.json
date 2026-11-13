@@ -1,0 +1,77 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0060",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0061",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0062",
+        "kind": "candidate",
+        "state": "screened-out",
+        "lane": "normal",
+        "title": "Draft, price and submit a whole sample bid",
+        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0061",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0060",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0062",
+        "outcome": "override",
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "faults",
+      "timeouts": 2
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

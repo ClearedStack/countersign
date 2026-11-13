@@ -1,0 +1,70 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0090"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0091"
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "lease.lost",
+          "item": "PA-0090"
+        },
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "lease.lost",
+          "item": "PA-0091"
+        },
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0090"
+        },
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0091"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0090",
+    "PA-0091"
+  ],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0090",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0091",
+        "state": "screened-out",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

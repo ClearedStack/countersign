@@ -1,0 +1,16 @@
+{
+  "rule": "decision.proposal_decline",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "f7bb32a888046fa9ee2eb0c08a6f26e8",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "proposal",
+    "outcome": "decline",
+    "from": "pending_approval",
+    "to": "declined",
+    "lane": "normal"
+  }
+}

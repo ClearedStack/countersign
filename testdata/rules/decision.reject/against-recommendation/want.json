@@ -1,0 +1,20 @@
+{
+  "rule": "decision.reject",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "ddc8994872733b649ac67c55bbccff70",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "candidate",
+    "outcome": "reject",
+    "from": "scored",
+    "to": "rejected",
+    "lane": "normal",
+    "override": true,
+    "score": 82,
+    "recommendation": "approved",
+    "reason": "The rule it rests on was withdrawn in this made-up example."
+  }
+}

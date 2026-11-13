@@ -1,0 +1,17 @@
+{
+  "rule": "decision.proposal_decline",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "89fbc90e5813eb6802578c8ed774a5e4",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "proposal",
+    "outcome": "decline",
+    "from": "pending_approval",
+    "to": "declined",
+    "lane": "normal",
+    "reason": "The current spelling is the one the source uses."
+  }
+}

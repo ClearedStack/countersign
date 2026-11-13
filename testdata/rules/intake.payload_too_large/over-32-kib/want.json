@@ -1,0 +1,5 @@
+{
+  "rule": "intake.payload_too_large",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.payload_too_large: the item is larger than Countersign accepts [fp 368b42e5e3f6066e]"
+}

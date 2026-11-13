@@ -1,0 +1,19 @@
+{
+  "rule": "decision.park",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "21b2ec1440851804e4c7167938985c5f",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "candidate",
+    "outcome": "park",
+    "from": "scored",
+    "to": "parked",
+    "lane": "normal",
+    "score": 60,
+    "recommendation": "parked",
+    "blocker": "Waiting for the made-up sample table to be published."
+  }
+}

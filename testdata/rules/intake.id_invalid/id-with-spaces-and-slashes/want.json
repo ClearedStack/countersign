@@ -1,0 +1,5 @@
+{
+  "rule": "intake.id_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.id_invalid: the item identifier is not a plain identifier [fp b1bbf3d1be027d63]"
+}

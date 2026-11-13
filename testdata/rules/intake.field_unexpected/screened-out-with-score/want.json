@@ -1,0 +1,16 @@
+{
+  "rule": "intake.field_unexpected",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_unexpected PA-0002: the item carries a field its kind and state do not allow [fp e42d2160c5e9ae9d]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "3cc7fea29b73803770626e752e7fb4c9",
+    "worker": "countersign",
+    "item": "PA-0002",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.field_unexpected",
+    "fingerprint": "e42d2160c5e9ae9d"
+  }
+}
