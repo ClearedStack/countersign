@@ -1,0 +1,24 @@
+{
+  "slug": "countersign",
+  "name": "Countersign",
+  "formerly": "cs-04-decide",
+  "earlierNames": [
+    "Gavel"
+  ],
+  "kind": "worker",
+  "stage": 4,
+  "namespace": "cs-workers",
+  "responsibility": "Holds scored candidates and edit proposals until a person decides.",
+  "interfaces": [
+    "Leases scored candidates and pending proposals from Muster",
+    "Presents them to the owner and records the decision, with a reason for any override"
+  ],
+  "repository": "countersign",
+  "image": "countersign",
+  "dependsOn": [
+    "muster"
+  ],
+  "memory": "30 MiB",
+  "version": "v0.1.0-draft",
+  "subTools": []
+}
