@@ -1,0 +1,3 @@
+cand-0002	candidate	screened-out	override	"Lunch menu rotator"
+prop-0001	edit_proposal	pending_approval	approve,decline	"Spelling fix in the sample table"
+odd-0001	candidate	observed	needs_subtool:E_NEEDS_SUBTOOL	"Already back in observation"

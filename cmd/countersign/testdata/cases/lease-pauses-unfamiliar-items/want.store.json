@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "cand-0001",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "Mileage log checker",
+      "score": 71
+    },
+    {
+      "id": "odd-0001",
+      "kind": "candidate",
+      "state": "observed",
+      "title": "Already back in observation",
+      "paused": "needs_subtool"
+    },
+    {
+      "id": "odd-0002",
+      "kind": "bundle",
+      "state": "scored",
+      "title": "A kind nobody has described",
+      "paused": "needs_subtool"
+    },
+    {
+      "id": "odd-0003",
+      "kind": "edit_proposal",
+      "state": "pending_approval",
+      "title": "A proposal type nobody has described",
+      "type": "LAYOUT",
+      "body": "Move the table to the left.",
+      "paused": "needs_subtool"
+    },
+    {
+      "id": "odd-0004",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "A field nobody has described",
+      "score": 40,
+      "paused": "needs_subtool"
+    },
+    {
+      "id": "cand-0002",
+      "kind": "candidate",
+      "state": "screened-out",
+      "title": "Lunch menu rotator",
+      "score": 12
+    }
+  ],
+  "decisions": []
+}

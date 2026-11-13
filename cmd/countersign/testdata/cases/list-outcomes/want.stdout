@@ -1,0 +1,8 @@
+candidate	scored	approve	approved	reason-optional
+candidate	scored	link	linked	reason-optional
+candidate	scored	merge	merged	reason-optional
+candidate	scored	park	parked	reason-optional
+candidate	scored	reject	rejected	reason-optional
+candidate	screened-out	override	observed	reason-required
+edit_proposal	pending_approval	approve	Approved	reason-optional
+edit_proposal	pending_approval	decline	declined	reason-optional

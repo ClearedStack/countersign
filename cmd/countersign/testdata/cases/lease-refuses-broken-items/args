@@ -1,0 +1,5 @@
+-store
+{store}
+lease
+-from
+{case}/lease.json

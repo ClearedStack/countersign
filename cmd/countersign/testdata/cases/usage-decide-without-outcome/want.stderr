@@ -1,0 +1,9 @@
+usage: countersign -store FILE COMMAND
+
+commands:
+  lease -from FILE                        hold the items in a saved Muster lease
+  pending                                 list the items waiting for a decision
+  decide -id ID -outcome WORD [-reason TEXT]
+                                          record a decision
+  decisions                               list the recorded decisions
+  outcomes                                list the allowed outcomes (needs no -store)

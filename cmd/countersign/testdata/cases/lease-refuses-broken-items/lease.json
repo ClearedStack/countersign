@@ -1,0 +1,12 @@
+{
+  "items": [
+    "just a string",
+    {"kind": "candidate", "state": "scored", "title": "No id"},
+    {"id": "has a space", "kind": "candidate", "state": "scored"},
+    {"id": "bad-0004", "kind": "candidate", "state": "scored", "score": "high"},
+    {"id": "bad-0005", "kind": "candidate"},
+    {"id": "bad-0006", "kind": "edit_proposal", "state": "pending_approval", "body": "No type given."},
+    null,
+    {"id": "cand-0001", "kind": "candidate", "state": "scored", "title": "Mileage log checker", "score": 71}
+  ]
+}

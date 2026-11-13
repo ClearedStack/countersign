@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "cand-0001",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "Mileage log checker",
+      "score": 71
+    },
+    {
+      "id": "cand-0002",
+      "kind": "candidate",
+      "state": "screened-out",
+      "title": "Lunch menu rotator",
+      "score": 12
+    },
+    {
+      "id": "prop-0001",
+      "kind": "edit_proposal",
+      "state": "pending_approval",
+      "title": "Spelling fix in the sample table",
+      "type": "DATA",
+      "target": "guides/sample-widget",
+      "body": "Change 'recieve' to 'receive' in row 3."
+    },
+    {
+      "id": "prop-0002",
+      "kind": "edit_proposal",
+      "state": "pending_approval",
+      "title": "Raise the page size",
+      "type": "CONFIG",
+      "target": "site/page-size",
+      "body": "Set the page size to 50."
+    },
+    {
+      "id": "prop-0003",
+      "kind": "edit_proposal",
+      "state": "pending_approval",
+      "title": "Broken link on the widget guide",
+      "type": "ISSUE",
+      "body": "The second link on the page goes nowhere."
+    }
+  ],
+  "decisions": []
+}

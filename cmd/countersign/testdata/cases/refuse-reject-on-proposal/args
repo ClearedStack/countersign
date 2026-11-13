@@ -1,0 +1,9 @@
+-store
+{store}
+decide
+-id
+prop-0001
+-outcome
+reject
+-reason
+A reason does not make it allowed.

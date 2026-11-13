@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "cand-0001",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "Mileage log checker",
+      "score": 71
+    },
+    {
+      "id": "cand-0003",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "Receipt folder namer",
+      "score": 55
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "cand-0001",
+      "kind": "candidate",
+      "state": "scored",
+      "title": "Mileage log checker",
+      "score": 71
+    },
+    {
+      "id": "cand-0002",
+      "kind": "candidate",
+      "state": "screened-out",
+      "title": "Lunch menu rotator",
+      "score": 12
+    },
+    {
+      "id": "prop-0001",
+      "kind": "edit_proposal",
+      "state": "declined",
+      "title": "Spelling fix in the sample table",
+      "type": "DATA",
+      "target": "guides/sample-widget",
+      "body": "Change 'recieve' to 'receive' in row 3."
+    },
+    {
+      "id": "odd-0001",
+      "kind": "candidate",
+      "state": "observed",
+      "title": "Already back in observation",
+      "paused": "needs_subtool"
+    }
+  ],
+  "decisions": [
+    {
+      "seq": 1,
+      "item_id": "prop-0001",
+      "outcome": "decline",
+      "from": "pending_approval",
+      "to": "declined"
+    }
+  ]
+}
