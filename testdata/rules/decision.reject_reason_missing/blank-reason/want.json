@@ -1,0 +1,5 @@
+{
+  "rule": "decision.reject_reason_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.reject_reason_missing PA-0001: a rejection needs a written reason [fp 7eb8755644f51fb1]"
+}

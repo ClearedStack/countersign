@@ -1,0 +1,12 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0003",
+    "kind": "candidate",
+    "state": "scored",
+    "lane": "normal",
+    "title": "Check a sample labor rate against a made-up ceiling",
+    "score": 82,
+    "recommendation": "approved"
+  }
+}

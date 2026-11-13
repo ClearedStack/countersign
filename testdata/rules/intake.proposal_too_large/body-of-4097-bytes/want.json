@@ -1,0 +1,16 @@
+{
+  "rule": "intake.proposal_too_large",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.proposal_too_large EP-0001: the edit proposal is larger than 4 KB [fp 99b73419c8da869b]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "9876bab0255ff289d58014d2a7f19275",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.proposal_too_large",
+    "fingerprint": "99b73419c8da869b"
+  }
+}

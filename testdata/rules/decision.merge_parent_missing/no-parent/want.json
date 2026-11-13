@@ -1,0 +1,5 @@
+{
+  "rule": "decision.merge_parent_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.merge_parent_missing PA-0001: a merge needs the parent tool named [fp 4b44e7c1ae7c94ca]"
+}

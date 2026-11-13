@@ -1,0 +1,17 @@
+{
+  "rule": "intake.state_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.state_unfamiliar EP-0001: there is no rule for an item in this state [fp 62b280f7afdab34a]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "73ce3c1ef990ed66c082efa7ef4b2d99",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.state_unfamiliar",
+    "fingerprint": "62b280f7afdab34a"
+  }
+}

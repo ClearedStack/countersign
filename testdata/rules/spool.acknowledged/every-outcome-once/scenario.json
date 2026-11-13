@@ -1,0 +1,153 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0050",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0051",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 60,
+        "recommendation": "parked"
+      },
+      {
+        "id": "PA-0052",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 41,
+        "recommendation": "rejected"
+      },
+      {
+        "id": "PA-0053",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 88,
+        "recommendation": "linked"
+      },
+      {
+        "id": "PA-0054",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0055",
+        "kind": "candidate",
+        "state": "screened-out",
+        "lane": "normal",
+        "title": "Draft, price and submit a whole sample bid",
+        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      },
+      {
+        "id": "EP-0050",
+        "kind": "proposal",
+        "state": "pending_approval",
+        "lane": "normal",
+        "type": "DATA",
+        "target": "catalog/sample-rate-checker/description",
+        "body": "The description says 'calender'. It should say 'calendar'."
+      },
+      {
+        "id": "EP-0051",
+        "kind": "proposal",
+        "state": "pending_approval",
+        "lane": "normal",
+        "type": "CONFIG",
+        "target": "workers/sample-worker/settings/retry-limit",
+        "body": "Raise the retry limit from 3 to 5."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0050",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0051",
+        "outcome": "park",
+        "blocker": "Waiting for the made-up sample table."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0052",
+        "outcome": "reject",
+        "reason": "Scores 41: a rare edge case."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0053",
+        "outcome": "link",
+        "tool": "Sample Rate Checker (made-up existing tool)"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0054",
+        "outcome": "merge",
+        "parent": "sample-rate-toolkit",
+        "reason": "One more check inside the toolkit."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0055",
+        "outcome": "override",
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0050",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0051",
+        "outcome": "decline",
+        "reason": "Three retries is deliberate."
+      }
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

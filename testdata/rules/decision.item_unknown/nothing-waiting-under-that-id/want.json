@@ -1,0 +1,36 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0040"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.item_unknown",
+      "code": "E_PARSE",
+      "error": "E_PARSE decision.item_unknown PA-0099: no item with that identifier is waiting for a decision [fp 62095a9911b85e69]"
+    }
+  ],
+  "pending": [
+    "PA-0040"
+  ],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0040",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

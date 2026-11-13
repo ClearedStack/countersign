@@ -1,0 +1,19 @@
+{
+  "rule": "decision.link",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "94715027d1236742fa33791fb150863a",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "candidate",
+    "outcome": "link",
+    "from": "scored",
+    "to": "linked",
+    "lane": "normal",
+    "score": 88,
+    "recommendation": "linked",
+    "tool": "Sample Rate Checker (made-up existing tool)"
+  }
+}

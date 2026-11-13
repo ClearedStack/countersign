@@ -1,0 +1,6 @@
+{
+  "item": "PA-0001",
+  "outcome": "merge",
+  "parent": "sample-rate-toolkit",
+  "reason": "It is one more check inside the sample rate toolkit, not a tool of its own."
+}

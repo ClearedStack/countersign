@@ -1,0 +1,58 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "EP-0070",
+        "kind": "proposal",
+        "state": "pending_approval",
+        "lane": "normal",
+        "type": "DATA",
+        "target": "catalog/no-such-tool/description",
+        "body": "The description says 'calender'. It should say 'calendar'."
+      },
+      {
+        "id": "EP-0071",
+        "kind": "proposal",
+        "state": "pending_approval",
+        "lane": "normal",
+        "type": "DATA",
+        "target": "catalog/sample-rate-checker/description",
+        "body": "The description says 'calender'. It should say 'calendar'."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0070",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0071",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 600
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

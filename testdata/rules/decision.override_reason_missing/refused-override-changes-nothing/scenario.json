@@ -1,0 +1,45 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0042",
+        "kind": "candidate",
+        "state": "screened-out",
+        "lane": "normal",
+        "title": "Draft, price and submit a whole sample bid",
+        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0042",
+        "outcome": "override"
+      }
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0042",
+        "outcome": "override",
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

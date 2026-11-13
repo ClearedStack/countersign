@@ -1,0 +1,163 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0070"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0071"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.proposal_approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "3b572637cb38a6bdd3992238954e00db",
+        "worker": "countersign",
+        "item": "EP-0070",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.proposal_approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6f865cdc002eab9a2ddb9bddb48e3c9b",
+        "worker": "countersign",
+        "item": "EP-0071",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.refused",
+          "code": "E_PARSE",
+          "item": "EP-0070",
+          "seq": 1,
+          "fingerprint": "419f024f48b3dbd4"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "EP-0071",
+          "seq": 2
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0070"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "EP-0070"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "fingerprint": "419f024f48b3dbd4",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "3b572637cb38a6bdd3992238954e00db",
+        "worker": "countersign",
+        "item": "EP-0070",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6f865cdc002eab9a2ddb9bddb48e3c9b",
+        "worker": "countersign",
+        "item": "EP-0071",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "EP-0070",
+        "state": "pending_approval",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "EP-0071",
+        "state": "approved",
+        "lane": "urgent",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6f865cdc002eab9a2ddb9bddb48e3c9b",
+        "worker": "countersign",
+        "item": "EP-0071",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    ],
+    "dispatched": [
+      {
+        "item": "EP-0071",
+        "worker": "bellbuoy",
+        "lane": "urgent"
+      }
+    ]
+  }
+}

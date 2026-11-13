@@ -1,0 +1,78 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0010"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0013"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0011"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0012"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0010"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "EP-0010",
+    "PA-0013",
+    "PA-0011",
+    "PA-0012",
+    "PA-0010"
+  ],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0010",
+        "state": "scored",
+        "lane": "backfill",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0011",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "EP-0010",
+        "state": "pending_approval",
+        "lane": "urgent",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0012",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0013",
+        "state": "screened-out",
+        "lane": "urgent",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

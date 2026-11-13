@@ -1,0 +1,5 @@
+/countersign
+/dist/
+*.test
+*.out
+countersign.tar

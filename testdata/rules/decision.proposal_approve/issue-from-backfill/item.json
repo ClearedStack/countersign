@@ -1,0 +1,9 @@
+{
+  "id": "EP-0003",
+  "kind": "proposal",
+  "state": "pending_approval",
+  "lane": "backfill",
+  "type": "ISSUE",
+  "target": "workers/sample-worker/rules",
+  "body": "There is no rule for two-column sample pages."
+}

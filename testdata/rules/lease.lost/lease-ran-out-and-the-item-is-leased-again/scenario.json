@@ -1,0 +1,40 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0090",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      },
+      {
+        "id": "PA-0091",
+        "kind": "candidate",
+        "state": "screened-out",
+        "lane": "normal",
+        "title": "Draft, price and submit a whole sample bid",
+        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 600
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

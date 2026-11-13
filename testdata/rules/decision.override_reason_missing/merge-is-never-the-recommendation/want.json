@@ -1,0 +1,5 @@
+{
+  "rule": "decision.override_reason_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.override_reason_missing PA-0001: an override needs a written reason [fp d8a1294a8b7e157a]"
+}

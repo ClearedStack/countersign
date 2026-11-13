@@ -1,0 +1,9 @@
+{
+  "id": "EP-0001",
+  "kind": "proposal",
+  "state": "pending_approval",
+  "lane": "normal",
+  "type": "DATA",
+  "target": "catalog/sample-rate-checker/description",
+  "body": "   \n  "
+}

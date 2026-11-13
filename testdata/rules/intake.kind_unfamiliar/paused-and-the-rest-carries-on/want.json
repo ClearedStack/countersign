@@ -1,0 +1,96 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.kind_unfamiliar",
+          "code": "E_NEEDS_SUBTOOL",
+          "item": "PA-0030",
+          "fingerprint": "58306fb6394bd6d9"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0031"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0030"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0030",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0031",
+    "EP-0030"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "needs_subtool",
+        "id": "ed7188cded3758ac06bb2906f656e38e",
+        "worker": "countersign",
+        "item": "PA-0030",
+        "at": "2026-01-05T10:00:00Z",
+        "to": "needs_subtool",
+        "code": "E_NEEDS_SUBTOOL",
+        "rule": "intake.kind_unfamiliar",
+        "fingerprint": "58306fb6394bd6d9"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0030",
+        "state": "needs_subtool",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0031",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "EP-0030",
+        "state": "pending_approval",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [
+      {
+        "contract": "v1",
+        "call": "needs_subtool",
+        "id": "ed7188cded3758ac06bb2906f656e38e",
+        "worker": "countersign",
+        "item": "PA-0030",
+        "at": "2026-01-05T10:00:00Z",
+        "to": "needs_subtool",
+        "code": "E_NEEDS_SUBTOOL",
+        "rule": "intake.kind_unfamiliar",
+        "fingerprint": "58306fb6394bd6d9"
+      }
+    ],
+    "dispatched": []
+  }
+}

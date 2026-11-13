@@ -1,0 +1,17 @@
+{
+  "rule": "intake.lane_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.lane_unfamiliar EP-0001: there is no rule for this priority lane [fp d0c1e5f6e9f6d0a0]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "f76c081494f8ac2ff662f94bb1065125",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.lane_unfamiliar",
+    "fingerprint": "d0c1e5f6e9f6d0a0"
+  }
+}

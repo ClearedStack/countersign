@@ -1,0 +1,37 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "items": [
+      {
+        "id": "PA-0020",
+        "kind": "candidate",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    ],
+    "raw": [
+      {
+        "id": "PA-0021",
+        "payload": "{\"id\": \"PA-0021\", \"kind\": "
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}
