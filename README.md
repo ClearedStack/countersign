@@ -91,6 +91,7 @@ In another terminal, be the owner:
 
 ./countersign -spool ./spool decide PA-0002 override -reason "Reshaped to do one job."
 ./countersign -spool ./spool decide PA-0001 approve
+./countersign -spool ./spool decide PA-0001 approve -waybill spec.json   # approve and attach the specification (see below)
 ./countersign -spool ./spool decide EP-0001 approve
 ./countersign -spool ./spool log               # each result: waiting, acknowledged or refused
 ./countersign -spool ./spool held              # items Countersign stopped with E_PARSE
@@ -100,6 +101,16 @@ In another terminal, be the owner:
 Within two seconds the first terminal logs `spool.acknowledged` for each decision. The stand-in lives in the memory of the `run` command, so stopping it forgets the leases. The spool is on disk and survives.
 
 Other commands: `status [-json]` summarizes waiting inbox counts by lane and kind alongside outbox, stopped and settled counts, `review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]` walks waiting items one at a time and prompts only for the fields each outcome needs (leaving skipped or interrupted items untouched), `add [FILE]` checks in one item by hand for trying the rules (it has no lease, so a decision on it cannot be sent), `decide -f FILE` takes a decision as JSON, `rules` lists every rule with its error code, and `version` prints the version. A command exits with 0 on success, 1 with a public error on standard error, and 2 for a mistake in how it was called.
+
+### Approving with a specification
+
+Waybill (stage 5) builds only from what the owner approved, so an approval has to carry the specification the owner reviewed. `decide ID approve -waybill FILE` attaches it:
+
+- The flag is allowed only with `approve` on a `scored` item, or with `override` on a `screened_out` one. With any other outcome, or on an edit proposal, the decision is refused (`decision.field_unexpected`). It cannot be given with `decide -f`, and a decision file cannot carry one.
+- FILE is one JSON object, at most 48 KiB, in the form Waybill's parser accepts: UTF-8, no duplicate key at any depth, nesting at most 32 deep, no field Waybill does not know, a `title`, a `tool_type`, a `tool` object and an `authority` with an `https` address, and no key Waybill reserves for raw observations of a vendor's product (`raw_html`, `screenshot` and so on). `item_id` and `state` may be left out; if given, `item_id` must be the item's and `state` the state the decision moves it to. Countersign reads no further: whether the tool is right is for the owner and Waybill to judge.
+- The object is carried unchanged, with white space removed, as `waybill` in the decision record, both in the spool and in the `result` of the `complete` call. Nothing else in the record changes. The record, as sent, must stay within 63 KiB so the whole call is within Muster's 64 KiB limit.
+- A missing, unreadable, empty, oversized or malformed file refuses the decision with one fixed message (`decision.malformed`) that names neither the file nor the reason, and nothing is spooled. The item stays in the inbox.
+- `review` does not take a specification. Approve with `decide` when one is needed.
 
 To build the image without publishing it:
 

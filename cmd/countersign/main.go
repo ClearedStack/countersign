@@ -6,7 +6,7 @@
 //	countersign [-spool DIR] list
 //	countersign [-spool DIR] show ID
 //	countersign [-spool DIR] review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]
-//	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT]
+//	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT] [-waybill FILE]
 //	countersign [-spool DIR] decide -f FILE
 //	countersign [-spool DIR] release ID [-reason TEXT]
 //	countersign [-spool DIR] held
@@ -65,6 +65,8 @@ usage: countersign [-spool DIR] COMMAND
   show ID               show one waiting item and the outcomes allowed for it
   review [ID...]        step through waiting items interactively; flags: -kind -lane
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
+                        -waybill FILE (approve of a scored item, or override of
+                        a screened_out one: the specification the owner reviewed)
   decide -f FILE        record a decision given as JSON ("-" is standard input)
   release ID            let an item run again that a worker stopped with E_PARSE;
                         flag: -reason (kept in the local log only)
@@ -213,6 +215,25 @@ func readInput(e env, name string) ([]byte, bool) {
 	return b, true
 }
 
+// readWaybill reads the specification file the owner attached to an approval.
+// It takes a regular file of at most item.MaxWaybill bytes and nothing else:
+// not standard input, a directory or a pipe. Why it failed is not said.
+func readWaybill(name string) ([]byte, bool) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, false
+	}
+	defer f.Close()
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return nil, false
+	}
+	b, err := io.ReadAll(io.LimitReader(f, item.MaxWaybill+1))
+	if err != nil || len(b) == 0 || len(b) > item.MaxWaybill {
+		return nil, false
+	}
+	return b, true
+}
+
 func cmdRules(e env) int {
 	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "RULE\tCODE\tMEANING")
@@ -313,6 +334,7 @@ func cmdDecide(e env, st *store.Store, args []string) int {
 	tool := fs.String("tool", "", "")
 	parent := fs.String("parent", "", "")
 	blocker := fs.String("blocker", "", "")
+	waybill := fs.String("waybill", "", "")
 
 	// Flags may come before, between or after the identifier and outcome.
 	var words []string
@@ -329,7 +351,7 @@ func cmdDecide(e env, st *store.Store, args []string) int {
 
 	var d decide.Decision
 	if *file != "" {
-		if len(words) != 0 || *reason != "" || *tool != "" || *parent != "" || *blocker != "" {
+		if len(words) != 0 || *reason != "" || *tool != "" || *parent != "" || *blocker != "" || *waybill != "" {
 			return usageError(e, "decide -f takes the whole decision from the file")
 		}
 		payload, ok := readInput(e, *file)
@@ -351,6 +373,13 @@ func cmdDecide(e env, st *store.Store, args []string) int {
 			Tool:    *tool,
 			Parent:  *parent,
 			Blocker: *blocker,
+		}
+		if *waybill != "" {
+			spec, ok := readWaybill(*waybill)
+			if !ok {
+				return public(e, rule.Fail(rule.DecisionMalformed, d.Item))
+			}
+			d.Waybill = spec
 		}
 	}
 	res, err := st.Decide(d, e.now())
