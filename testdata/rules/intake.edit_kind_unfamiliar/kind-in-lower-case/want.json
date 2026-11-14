@@ -1,0 +1,17 @@
+{
+  "rule": "intake.edit_kind_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.edit_kind_unfamiliar EP-0001: there is no rule for this kind of edit [fp 7b517110087bb64b]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "db42d02af0c89d631292900a993affe9",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.edit_kind_unfamiliar",
+    "fingerprint": "7b517110087bb64b"
+  }
+}

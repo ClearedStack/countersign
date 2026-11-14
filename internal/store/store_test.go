@@ -18,7 +18,7 @@ import (
 var at = time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC)
 
 func scored(id string) []byte {
-	return []byte(fmt.Sprintf(`{"id":%q,"kind":"candidate","state":"scored","lane":"normal","title":"A made-up tool","score":82,"recommendation":"approved"}`, id))
+	return []byte(fmt.Sprintf(`{"id":%q,"kind":"item","state":"scored","lane":"normal","title":"A made-up tool","score":82,"recommendation":"approved"}`, id))
 }
 
 func open(t *testing.T, root string) *Store {
@@ -32,9 +32,12 @@ func open(t *testing.T, root string) *Store {
 
 func add(t *testing.T, s *Store, id string) {
 	t.Helper()
-	in, err := s.Intake("", scored(id), at)
-	if err != nil || in.Err != nil {
-		t.Fatalf("intake %s: %v %v", id, err, in.Err)
+	it, perr := item.Parse(scored(id))
+	if perr != nil {
+		t.Fatalf("item %s: %v", id, perr)
+	}
+	if err := s.Accept(id+".1", it); err != nil {
+		t.Fatalf("accept %s: %v", id, err)
 	}
 }
 
@@ -57,7 +60,7 @@ func TestDecisionSurvivesAReopen(t *testing.T) {
 
 	s = open(t, root) // as after a restart
 	out, err := s.Outbox()
-	if err != nil || len(out) != 1 || out[0].Record.Item != "PA-0001" || out[0].Status != Waiting {
+	if err != nil || len(out) != 1 || out[0].Record.Item != "PA-0001" || out[0].Status != Waiting || out[0].Lease != "PA-0001.1" {
 		t.Fatalf("outbox after reopen: %+v %v", out, err)
 	}
 	pending, _ := s.Pending()
@@ -68,11 +71,14 @@ func TestDecisionSurvivesAReopen(t *testing.T) {
 
 func TestRefusedDecisionChangesNothing(t *testing.T) {
 	s := open(t, t.TempDir())
-	in, err := s.Intake("", []byte(`{"id":"PA-0002","kind":"candidate","state":"screened-out","lane":"normal","title":"A made-up tool","screen_reason":"Fails a gate."}`), at)
-	if err != nil || in.Err != nil {
-		t.Fatal(err, in.Err)
+	it, perr := item.Parse([]byte(`{"id":"PA-0002","kind":"item","state":"screened_out","lane":"normal","title":"A made-up tool","screen_reason":"Fails a gate."}`))
+	if perr != nil {
+		t.Fatal(perr)
 	}
-	_, err = s.Decide(decide.Decision{Item: "PA-0002", Outcome: item.Override}, at)
+	if err := s.Accept("PA-0002.1", it); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.Decide(decide.Decision{Item: "PA-0002", Outcome: item.Override}, at)
 	if ruleOf(err) != rule.DecisionOverrideReasonMissing {
 		t.Fatalf("got %v", err)
 	}
@@ -251,5 +257,39 @@ func TestGetRejectsUnsafeIdentifiers(t *testing.T) {
 		if _, err := s.Get(id); ruleOf(err) != rule.DecisionItemUnknown {
 			t.Errorf("Get(%q) = %v", id, err)
 		}
+	}
+}
+
+func TestReportSaysTheSameThingOnce(t *testing.T) {
+	s := open(t, t.TempDir())
+	add(t, s, "PA-0001")
+	perr := rule.Fail(rule.IntakeKindUnfamiliar, "PA-0001")
+
+	rec, err := s.Report("PA-0001.2", perr, at)
+	if err != nil || rec == nil || rec.Call != "needs_subtool" || rec.Code != "E_NEEDS_SUBTOOL" {
+		t.Fatalf("first report: %+v %v", rec, err)
+	}
+	if pending, _ := s.Pending(); len(pending) != 0 {
+		t.Error("the reported item stayed in the inbox")
+	}
+	// Waiting: not said again.
+	if rec, err = s.Report("PA-0001.3", perr, at); err != nil || rec != nil {
+		t.Errorf("second report while the first waits: %+v %v", rec, err)
+	}
+	// Refused by Muster: still not said again.
+	if err := s.Refuse(1, "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if rec, err = s.Report("PA-0001.4", perr, at); err != nil || rec != nil {
+		t.Errorf("report after a refusal: %+v %v", rec, err)
+	}
+	// A different rule about the same item is a different report.
+	other := rule.Fail(rule.IntakeFieldMissing, "PA-0001")
+	if rec, err = s.Report("PA-0001.5", other, at); err != nil || rec == nil || rec.Call != "fail" || rec.Code != "E_PARSE" {
+		t.Errorf("a different report: %+v %v", rec, err)
+	}
+	out, _ := s.Outbox()
+	if len(out) != 1 || out[0].Lease != "PA-0001.5" {
+		t.Errorf("outbox: %+v", out)
 	}
 }

@@ -5,8 +5,11 @@
     "kind": "proposal",
     "state": "pending_approval",
     "lane": "normal",
-    "type": "CONFIG",
     "target": "workers/sample-worker/settings/retry-limit",
-    "body": "Raise the retry limit from 3 to 5. Three is too few for the sample feed."
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "CONFIG",
+    "change": "Raise the retry limit from 3 to 5.",
+    "reason": "Three is too few for the sample feed."
   }
 }

@@ -1,0 +1,35 @@
+{
+  "lease": "PA-0002.1",
+  "kind": "item",
+  "id": "PA-0002",
+  "state": "screened-out",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T10:01:00Z",
+  "results": {
+    "sextant": {
+      "core_job": {
+        "value": "Draft, price and submit a whole sample bid",
+        "tier": "stated"
+      }
+    },
+    "assay": {
+      "worker": "assay",
+      "state": "screened_out",
+      "gates": [
+        {
+          "id": "public_source",
+          "name": "Public source",
+          "pass": true,
+          "reason": "The rules come from public material."
+        },
+        {
+          "id": "one_job",
+          "name": "One job",
+          "pass": false,
+          "reason": "It does three jobs, not one."
+        }
+      ]
+    }
+  }
+}

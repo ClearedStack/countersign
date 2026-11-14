@@ -7,6 +7,7 @@
 //	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT]
 //	countersign [-spool DIR] decide -f FILE
 //	countersign [-spool DIR] log
+//	countersign [-spool DIR] run -muster URL [-token-file FILE] [-interval D]
 //	countersign [-spool DIR] run -standin FILE [-interval D] [-ticks N]
 //	countersign rules
 //	countersign version
@@ -59,13 +60,16 @@ usage: countersign [-spool DIR] COMMAND
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
   decide -f FILE        record a decision given as JSON ("-" is standard input)
   log                   list recent records and whether Muster has confirmed them
-  run -standin FILE     run the worker loop against the in-memory Muster stand-in
+  run -muster URL       run the lease loop against Muster; -token-file names the
+                        ServiceAccount token, read afresh for every call
+  run -standin FILE     run the lease loop against the in-memory Muster stand-in
   rules                 list every rule and its public error code
   version               print the version
 
-outcomes: approve link merge park reject (a scored candidate)
-          override (a screened-out candidate)
+outcomes: approve link merge park reject (a scored item)
+          override (a screened_out item)
           approve decline (an edit proposal)
+          release keep (an item a worker stopped with E_PARSE)
 `
 
 type env struct {
@@ -204,14 +208,16 @@ func cmdAdd(e env, st *store.Store, args []string) int {
 	if !ok {
 		return usageError(e, "cannot read the input")
 	}
-	in, err := st.Intake("", payload, e.now())
-	if err != nil {
+	it, perr := item.Parse(payload)
+	if perr != nil {
+		return public(e, perr)
+	}
+	// An item added by hand has no lease, so a decision on it is recorded
+	// here and cannot be sent to Muster.
+	if err := st.Accept("", it); err != nil {
 		return public(e, err)
 	}
-	if in.Err != nil {
-		return public(e, in.Err)
-	}
-	printJSON(e.stdout, in.Item, true)
+	printJSON(e.stdout, it, true)
 	return exitOK
 }
 
@@ -241,7 +247,9 @@ func cmdList(e env, st *store.Store) int {
 		detail, summary := "", ""
 		switch {
 		case it.Kind == item.Proposal:
-			detail, summary = it.Type+" "+it.Target, it.Body
+			detail, summary = it.EditKind+" "+it.Target, it.Change
+		case it.Kind == item.Release:
+			detail, summary = "held by "+it.HeldWorker+", "+it.HeldCode, it.Title
 		case it.State == item.Scored:
 			detail, summary = fmt.Sprintf("score %d, recommended %s", *it.Score, it.Recommendation), it.Title
 		default:
@@ -338,26 +346,40 @@ func cmdLog(e env, st *store.Store) int {
 func cmdRun(e env, st *store.Store, args []string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	address := fs.String("muster", "", "")
+	tokenFile := fs.String("token-file", muster.DefaultTokenFile, "")
 	standin := fs.String("standin", "", "")
-	interval := fs.Duration("interval", 15*time.Second, "")
+	interval := fs.Duration("interval", worker.Interval, "")
 	ticks := fs.Int("ticks", 0, "")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 || *interval <= 0 || *ticks < 0 {
 		return usageError(e, "run: see countersign help")
 	}
-	if *standin == "" {
-		return usageError(e, "run needs -standin FILE: the client for the real Muster is not built yet")
+	if (*address == "") == (*standin == "") {
+		return usageError(e, "run needs exactly one of -muster URL and -standin FILE")
 	}
-	data, err := os.ReadFile(*standin)
-	if err != nil {
-		return usageError(e, "cannot read the stand-in file")
-	}
-	seed, err := muster.ParseSeed(data)
-	if err != nil {
-		return usageError(e, "the stand-in file is not a usable seed")
-	}
-	queue, err := muster.NewStandIn(seed, e.now)
-	if err != nil {
-		return usageError(e, "the stand-in file is not a usable seed")
+
+	var queue muster.Queue
+	var snapshot func() muster.Snapshot
+	if *address != "" {
+		client, err := muster.NewHTTP(*address, *tokenFile)
+		if err != nil {
+			return usageError(e, "the address given to -muster must be a plain http or https URL")
+		}
+		queue = client
+	} else {
+		data, err := os.ReadFile(*standin)
+		if err != nil {
+			return usageError(e, "cannot read the stand-in file")
+		}
+		seed, err := muster.ParseSeed(data)
+		if err != nil {
+			return usageError(e, "the stand-in file is not a usable seed")
+		}
+		s, err := muster.NewStandIn(seed, e.now)
+		if err != nil {
+			return usageError(e, "the stand-in file is not a usable seed")
+		}
+		queue, snapshot = s, s.Snapshot
 	}
 
 	w := &worker.Worker{
@@ -382,9 +404,10 @@ func cmdRun(e env, st *store.Store, args []string) int {
 		case <-timer.C:
 		}
 	}
-	if *ticks > 0 {
-		// A bounded run is for trying things out: show where it ended.
-		printJSON(e.stdout, queue.Snapshot(), true)
+	if snapshot != nil {
+		// A bounded run against the stand-in is for trying things out: show
+		// where it ended.
+		printJSON(e.stdout, snapshot(), true)
 	}
 	return exitOK
 }

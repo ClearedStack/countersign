@@ -1,0 +1,17 @@
+{
+  "lease": "EP-0001.1",
+  "kind": "proposal",
+  "id": "EP-0001",
+  "state": "pending_approval",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T10:01:00Z",
+  "proposal": {
+    "target": "catalog/sample-rate-checker/description",
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "DATA",
+    "change": "The description says 'calender'. It should say 'calendar'.",
+    "reason": "A spelling mistake."
+  }
+}

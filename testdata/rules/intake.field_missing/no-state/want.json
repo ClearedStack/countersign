@@ -1,7 +1,7 @@
 {
   "rule": "intake.field_missing",
   "code": "E_PARSE",
-  "error": "E_PARSE intake.field_missing PA-0001: the item lacks a field its kind and state require [fp a3e072838773ef25]",
+  "error": "E_PARSE intake.field_missing PA-0001: the item lacks something its kind and state require [fp a3e072838773ef25]",
   "record": {
     "contract": "v1",
     "call": "fail",

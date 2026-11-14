@@ -3,7 +3,10 @@
   "kind": "proposal",
   "state": "pending_approval",
   "lane": "backfill",
-  "type": "ISSUE",
   "target": "workers/sample-worker/rules",
-  "body": "There is no rule for two-column sample pages."
+  "repository": "clearedstack.com",
+  "file": "src/data/sample-catalog.json",
+  "edit_kind": "ISSUE",
+  "change": "There is no rule for two-column sample pages.",
+  "reason": "A spelling mistake."
 }

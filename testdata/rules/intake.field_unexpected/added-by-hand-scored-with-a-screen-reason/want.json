@@ -1,0 +1,5 @@
+{
+  "rule": "intake.field_unexpected",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_unexpected PA-0001: the item carries a field its kind and state do not allow [fp e14ca57828383ff8]"
+}

@@ -1,0 +1,13 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0007",
+    "kind": "item",
+    "state": "scored",
+    "lane": "normal",
+    "title": "Check a sample labor rate against a made-up ceiling",
+    "score": 82,
+    "recommendation": "approved",
+    "split_merge_review": true
+  }
+}

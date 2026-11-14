@@ -1,8 +1,0 @@
-{
-  "id": "EP-0001",
-  "kind": "proposal",
-  "state": "pending_approval",
-  "lane": "normal",
-  "type": "DATA",
-  "body": "The description says 'calender'. It should say 'calendar'."
-}

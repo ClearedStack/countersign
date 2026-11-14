@@ -5,24 +5,34 @@
       "workers/sample-worker/settings/retry-limit",
       "workers/sample-worker/rules"
     ],
-    "items": [
+    "steps": [
       {
-        "id": "EP-0070",
         "kind": "proposal",
+        "id": "EP-0070",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "DATA",
-        "target": "catalog/no-such-tool/description",
-        "body": "The description says 'calender'. It should say 'calendar'."
+        "proposal": {
+          "target": "catalog/no-such-tool/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
       },
       {
-        "id": "EP-0071",
         "kind": "proposal",
+        "id": "EP-0071",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "DATA",
-        "target": "catalog/sample-rate-checker/description",
-        "body": "The description says 'calender'. It should say 'calendar'."
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
       }
     ]
   },

@@ -3,48 +3,64 @@
     "catalog/sample-rate-checker/description",
     "workers/sample-worker/settings/retry-limit"
   ],
-  "items": [
+  "steps": [
     {
+      "kind": "item",
       "id": "PA-0001",
-      "kind": "candidate",
       "state": "scored",
       "lane": "normal",
-      "title": "Check a sample labor rate against a made-up ceiling",
-      "score": 82,
-      "recommendation": "approved"
+      "results": {
+        "sextant": {"core_job": {"value": "Check a sample labor rate against a made-up ceiling"}},
+        "assay": {"total": 82, "recommendation": "Build"}
+      }
     },
     {
+      "kind": "item",
       "id": "PA-0002",
-      "kind": "candidate",
-      "state": "screened-out",
+      "state": "screened_out",
       "lane": "normal",
-      "title": "Draft, price and submit a whole sample bid",
-      "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+      "results": {
+        "sextant": {"core_job": {"value": "Draft, price and submit a whole sample bid"}},
+        "assay": {
+          "gates": [
+            {"name": "Public source", "pass": true, "reason": "The rules come from public material."},
+            {"name": "One job", "pass": false, "reason": "It does three jobs, not one."}
+          ]
+        }
+      }
     },
     {
+      "kind": "item",
       "id": "PA-0003",
-      "kind": "candidate",
       "state": "scored",
       "lane": "backfill",
-      "title": "Count the pages in a made-up proposal volume",
-      "score": 60,
-      "recommendation": "parked"
+      "results": {
+        "sextant": {"core_job": {"value": "Count the pages in a made-up proposal volume"}},
+        "assay": {"total": 60, "recommendation": "Park"}
+      }
     },
     {
-      "id": "EP-0001",
       "kind": "proposal",
+      "id": "EP-0001",
       "state": "pending_approval",
       "lane": "normal",
-      "type": "DATA",
-      "target": "catalog/sample-rate-checker/description",
-      "body": "The description says 'calender'. It should say 'calendar'."
+      "proposal": {
+        "target": "catalog/sample-rate-checker/description",
+        "repository": "clearedstack.com",
+        "file": "src/data/sample-catalog.json",
+        "edit_kind": "DATA",
+        "change": "The description says 'calender'. It should say 'calendar'.",
+        "reason": "A spelling mistake."
+      }
     },
     {
+      "kind": "item",
       "id": "PA-0004",
-      "kind": "bundle",
       "state": "scored",
       "lane": "normal",
-      "title": "Something Countersign has no rule for"
+      "results": {
+        "assay": {"total": 90, "recommendation": "Split"}
+      }
     }
   ],
   "timeouts": 1

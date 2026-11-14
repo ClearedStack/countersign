@@ -1,0 +1,16 @@
+{
+  "rule": "intake.id_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.id_invalid EP-0001: the item identifier does not have the form of its kind [fp c56bb266159f8b2a]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "34c27b7e19fef012f40a9ada7f28d0d8",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.id_invalid",
+    "fingerprint": "c56bb266159f8b2a"
+  }
+}

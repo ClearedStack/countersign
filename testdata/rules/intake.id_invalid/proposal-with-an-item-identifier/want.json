@@ -1,0 +1,16 @@
+{
+  "rule": "intake.id_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.id_invalid PA-0001: the item identifier does not have the form of its kind [fp e8f34bf9c2013cec]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "412ac834be1b523c49a89999dad96180",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.id_invalid",
+    "fingerprint": "e8f34bf9c2013cec"
+  }
+}

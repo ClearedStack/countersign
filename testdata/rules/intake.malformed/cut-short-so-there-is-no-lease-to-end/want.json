@@ -1,0 +1,47 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.malformed",
+          "code": "E_PARSE",
+          "fingerprint": "4f58517738585dd5"
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:01:20Z",
+          "rule": "intake.malformed",
+          "code": "E_PARSE",
+          "fingerprint": "4f58517738585dd5"
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0022",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

@@ -34,7 +34,6 @@ const (
 	IntakeMalformed                ID = "intake.malformed"
 	IntakePayloadTooLarge          ID = "intake.payload_too_large"
 	IntakeIDInvalid                ID = "intake.id_invalid"
-	IntakeIDMismatch               ID = "intake.id_mismatch"
 	IntakeFieldMissing             ID = "intake.field_missing"
 	IntakeFieldUnexpected          ID = "intake.field_unexpected"
 	IntakeScoreOutOfRange          ID = "intake.score_out_of_range"
@@ -43,8 +42,9 @@ const (
 	IntakeKindUnfamiliar           ID = "intake.kind_unfamiliar"
 	IntakeStateUnfamiliar          ID = "intake.state_unfamiliar"
 	IntakeRecommendationUnfamiliar ID = "intake.recommendation_unfamiliar"
-	IntakeProposalTypeUnfamiliar   ID = "intake.proposal_type_unfamiliar"
+	IntakeEditKindUnfamiliar       ID = "intake.edit_kind_unfamiliar"
 	IntakeLaneUnfamiliar           ID = "intake.lane_unfamiliar"
+	IntakeFieldUnfamiliar          ID = "intake.field_unfamiliar"
 )
 
 // Rules for the owner's decision.
@@ -57,6 +57,8 @@ const (
 	DecisionOverride              ID = "decision.override"
 	DecisionProposalApprove       ID = "decision.proposal_approve"
 	DecisionProposalDecline       ID = "decision.proposal_decline"
+	DecisionRelease               ID = "decision.release"
+	DecisionKeep                  ID = "decision.keep"
 	DecisionMalformed             ID = "decision.malformed"
 	DecisionItemUnknown           ID = "decision.item_unknown"
 	DecisionOutcomeUnknown        ID = "decision.outcome_unknown"
@@ -75,6 +77,7 @@ const (
 	SpoolAcknowledged ID = "spool.acknowledged"
 	SpoolTimeout      ID = "spool.timeout"
 	SpoolRefused      ID = "spool.refused"
+	SpoolNoLease      ID = "spool.no_lease"
 	LeaseTimeout      ID = "lease.timeout"
 	LeaseLost         ID = "lease.lost"
 	StoreUnavailable  ID = "store.unavailable"
@@ -89,11 +92,10 @@ type Info struct {
 
 var table = []Info{
 	{IntakeAccept, "", "the item is held for the owner"},
-	{IntakeMalformed, Parse, "the item is not one well-formed JSON object of the expected shape"},
+	{IntakeMalformed, Parse, "the item or lease is not one well-formed JSON object of the expected shape"},
 	{IntakePayloadTooLarge, Parse, "the item is larger than Countersign accepts"},
-	{IntakeIDInvalid, Parse, "the item identifier is not a plain identifier"},
-	{IntakeIDMismatch, Parse, "the item names a different identifier from its lease"},
-	{IntakeFieldMissing, Parse, "the item lacks a field its kind and state require"},
+	{IntakeIDInvalid, Parse, "the item identifier does not have the form of its kind"},
+	{IntakeFieldMissing, Parse, "the item lacks something its kind and state require"},
 	{IntakeFieldUnexpected, Parse, "the item carries a field its kind and state do not allow"},
 	{IntakeScoreOutOfRange, Parse, "the rubric score is not between 20 and 100"},
 	{IntakeTextInvalid, Parse, "a text field is too long or holds control characters"},
@@ -101,17 +103,20 @@ var table = []Info{
 	{IntakeKindUnfamiliar, NeedsSubtool, "there is no rule for this kind of item"},
 	{IntakeStateUnfamiliar, NeedsSubtool, "there is no rule for an item in this state"},
 	{IntakeRecommendationUnfamiliar, NeedsSubtool, "there is no rule for this recommendation"},
-	{IntakeProposalTypeUnfamiliar, NeedsSubtool, "there is no rule for this type of edit proposal"},
+	{IntakeEditKindUnfamiliar, NeedsSubtool, "there is no rule for this kind of edit"},
 	{IntakeLaneUnfamiliar, NeedsSubtool, "there is no rule for this priority lane"},
+	{IntakeFieldUnfamiliar, NeedsSubtool, "the lease carries a field Countersign has no rule for"},
 
 	{DecisionApprove, "", "the candidate is approved to be built"},
 	{DecisionLink, "", "the catalog will point to an existing tool"},
 	{DecisionMerge, "", "the candidate is folded into another tool"},
 	{DecisionPark, "", "the candidate is parked with its blocker named"},
 	{DecisionReject, "", "the candidate is rejected with its score and reason"},
-	{DecisionOverride, "", "the screened-out candidate goes back to observed"},
+	{DecisionOverride, "", "the screened_out candidate goes back to observed"},
 	{DecisionProposalApprove, "", "the edit proposal is approved on the urgent lane"},
 	{DecisionProposalDecline, "", "the edit proposal is declined and nothing is changed"},
+	{DecisionRelease, "", "the held item is released to run again"},
+	{DecisionKeep, "", "the held item stays held"},
 	{DecisionMalformed, Parse, "the decision is not one well-formed JSON object of the expected shape"},
 	{DecisionItemUnknown, Parse, "no item with that identifier is waiting for a decision"},
 	{DecisionOutcomeUnknown, Parse, "the outcome is not one Countersign knows"},
@@ -127,6 +132,7 @@ var table = []Info{
 	{SpoolAcknowledged, "", "Muster confirmed the record"},
 	{SpoolTimeout, Timeout, "Muster did not confirm in time; the record stays in the spool and is retried in order"},
 	{SpoolRefused, Parse, "Muster refused the record; the item stays in its current state"},
+	{SpoolNoLease, Parse, "the record is for an item that was added by hand and has no lease, so it cannot be sent"},
 	{LeaseTimeout, Timeout, "Muster did not answer a lease or heartbeat in time"},
 	{LeaseLost, "", "the lease on a waiting item ended, so it left the inbox"},
 	{StoreUnavailable, Timeout, "the local spool could not be read or written"},

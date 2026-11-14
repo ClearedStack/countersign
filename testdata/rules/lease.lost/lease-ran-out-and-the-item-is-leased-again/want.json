@@ -59,7 +59,7 @@
       },
       {
         "id": "PA-0091",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "normal",
         "status": "leased"
       }

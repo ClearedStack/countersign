@@ -1,0 +1,12 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0016",
+    "kind": "release",
+    "state": "recorded",
+    "lane": "normal",
+    "title": "Made-up sample page counter",
+    "held_worker": "sextant",
+    "held_code": "E_PARSE"
+  }
+}

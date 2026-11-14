@@ -1,0 +1,38 @@
+{
+  "lease": "PA-0001.1",
+  "kind": "item",
+  "id": "PA-0001",
+  "state": "scored",
+  "lane": "normal",
+  "attempt": "1",
+  "expires": "2026-01-05T10:01:00Z",
+  "results": {
+    "sextant": {
+      "core_job": {
+        "value": "Check a sample labor rate against a made-up ceiling",
+        "tier": "stated"
+      }
+    },
+    "assay": {
+      "worker": "assay",
+      "state": "scored",
+      "gates": [
+        {
+          "id": "public_source",
+          "name": "Public source",
+          "pass": true,
+          "reason": "The rules come from public material."
+        },
+        {
+          "id": "one_job",
+          "name": "One job",
+          "pass": true,
+          "reason": "It does one job."
+        }
+      ],
+      "total": 82,
+      "recommendation": "Build",
+      "split_merge_review": false
+    }
+  }
+}

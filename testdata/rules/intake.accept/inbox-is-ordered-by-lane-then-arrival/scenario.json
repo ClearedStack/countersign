@@ -5,50 +5,157 @@
       "workers/sample-worker/settings/retry-limit",
       "workers/sample-worker/rules"
     ],
-    "items": [
+    "steps": [
       {
+        "kind": "item",
         "id": "PA-0010",
-        "kind": "candidate",
         "state": "scored",
         "lane": "backfill",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 82,
+            "recommendation": "Build",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0011",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 82,
+            "recommendation": "Build",
+            "split_merge_review": false
+          }
+        }
       },
       {
-        "id": "EP-0010",
         "kind": "proposal",
+        "id": "EP-0010",
         "state": "pending_approval",
         "lane": "urgent",
-        "type": "DATA",
-        "target": "catalog/sample-rate-checker/description",
-        "body": "The description says 'calender'. It should say 'calendar'."
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0012",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 82,
+            "recommendation": "Build",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0013",
-        "kind": "candidate",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "urgent",
-        "title": "Draft, price and submit a whole sample bid",
-        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "screened_out",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": false,
+                "reason": "It does three jobs, not one."
+              }
+            ]
+          }
+        }
       }
     ]
   },

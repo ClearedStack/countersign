@@ -1,0 +1,16 @@
+{
+  "rule": "intake.id_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.id_invalid EP-0003: the item identifier does not have the form of its kind [fp 7df0f0bd39bc9b2a]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "def3ee7386f136504378cbb140c9b084",
+    "worker": "countersign",
+    "item": "EP-0003",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.id_invalid",
+    "fingerprint": "7df0f0bd39bc9b2a"
+  }
+}

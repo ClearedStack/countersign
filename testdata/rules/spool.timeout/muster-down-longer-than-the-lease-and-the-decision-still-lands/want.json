@@ -1,0 +1,120 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0064"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "d676ff09c00d3a8d4eaf70e8c50e5fc1",
+        "worker": "countersign",
+        "item": "PA-0064",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.timeout",
+          "code": "E_TIMEOUT",
+          "item": "PA-0064",
+          "seq": 1,
+          "fingerprint": "1bb77eb7b0519069"
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0064",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0064.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "d676ff09c00d3a8d4eaf70e8c50e5fc1",
+        "worker": "countersign",
+        "item": "PA-0064",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0064",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0064.1",
+        "id": "PA-0064",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "d676ff09c00d3a8d4eaf70e8c50e5fc1",
+          "worker": "countersign",
+          "item": "PA-0064",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

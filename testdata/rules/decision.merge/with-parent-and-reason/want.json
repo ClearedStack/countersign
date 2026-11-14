@@ -3,11 +3,11 @@
   "record": {
     "contract": "v1",
     "call": "complete",
-    "id": "46a4c1fadcde9232f4f9bf46fb149c8c",
+    "id": "4dd0a1114b04a62ad4f4090b340d7365",
     "worker": "countersign",
     "item": "PA-0001",
     "at": "2026-01-05T10:00:00Z",
-    "kind": "candidate",
+    "kind": "item",
     "outcome": "merge",
     "from": "scored",
     "to": "merged",

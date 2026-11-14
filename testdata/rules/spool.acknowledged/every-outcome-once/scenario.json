@@ -5,77 +5,241 @@
       "workers/sample-worker/settings/retry-limit",
       "workers/sample-worker/rules"
     ],
-    "items": [
+    "steps": [
       {
+        "kind": "item",
         "id": "PA-0050",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 82,
+            "recommendation": "Build",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0051",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 60,
-        "recommendation": "parked"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 60,
+            "recommendation": "Park",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0052",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 41,
-        "recommendation": "rejected"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 41,
+            "recommendation": "Reject",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0053",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 88,
-        "recommendation": "linked"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 88,
+            "recommendation": "Link",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0054",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "scored",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": true,
+                "reason": "It does one job."
+              }
+            ],
+            "total": 82,
+            "recommendation": "Build",
+            "split_merge_review": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0055",
-        "kind": "candidate",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "normal",
-        "title": "Draft, price and submit a whole sample bid",
-        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "worker": "assay",
+            "state": "screened_out",
+            "gates": [
+              {
+                "id": "public_source",
+                "name": "Public source",
+                "pass": true,
+                "reason": "The rules come from public material."
+              },
+              {
+                "id": "one_job",
+                "name": "One job",
+                "pass": false,
+                "reason": "It does three jobs, not one."
+              }
+            ]
+          }
+        }
       },
       {
+        "kind": "proposal",
         "id": "EP-0050",
-        "kind": "proposal",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "DATA",
-        "target": "catalog/sample-rate-checker/description",
-        "body": "The description says 'calender'. It should say 'calendar'."
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
       },
       {
-        "id": "EP-0051",
         "kind": "proposal",
+        "id": "EP-0051",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "CONFIG",
-        "target": "workers/sample-worker/settings/retry-limit",
-        "body": "Raise the retry limit from 3 to 5."
+        "proposal": {
+          "target": "workers/sample-worker/settings/retry-limit",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "CONFIG",
+          "change": "Raise the retry limit from 3 to 5.",
+          "reason": "A spelling mistake."
+        }
       }
     ]
   },

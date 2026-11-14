@@ -1,0 +1,17 @@
+{
+  "lease": "EP-0002.1",
+  "kind": "proposal",
+  "id": "EP-0002",
+  "state": "pending_approval",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T10:01:00Z",
+  "proposal": {
+    "target": "workers/sample-worker/settings/retry-limit",
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "CONFIG",
+    "change": "Raise the retry limit from 3 to 5.",
+    "reason": "Three is too few for the sample feed."
+  }
+}

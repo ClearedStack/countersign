@@ -1,0 +1,16 @@
+{
+  "rule": "intake.text_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.text_invalid PA-0003: a text field is too long or holds control characters [fp b234f152571b4695]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "4c54b85e9da65404d169692c31d986f7",
+    "worker": "countersign",
+    "item": "PA-0003",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.text_invalid",
+    "fingerprint": "b234f152571b4695"
+  }
+}

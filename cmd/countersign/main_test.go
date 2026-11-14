@@ -29,9 +29,9 @@ func cs(t *testing.T, spool, stdin string, args ...string) result {
 }
 
 const (
-	scoredItem   = `{"id":"PA-0001","kind":"candidate","state":"scored","lane":"normal","title":"Check a sample labor rate against a made-up ceiling","score":82,"recommendation":"approved"}`
-	screenedItem = `{"id":"PA-0002","kind":"candidate","state":"screened-out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"Fails the one-job gate: it does three jobs, not one."}`
-	proposalItem = `{"id":"EP-0001","kind":"proposal","state":"pending_approval","lane":"urgent","type":"DATA","target":"catalog/sample-rate-checker/description","body":"The description says 'calender'.\nIt should say 'calendar'."}`
+	scoredItem   = `{"id":"PA-0001","kind":"item","state":"scored","lane":"normal","title":"Check a sample labor rate against a made-up ceiling","score":82,"recommendation":"approved"}`
+	screenedItem = `{"id":"PA-0002","kind":"item","state":"screened_out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"One job: It does three jobs, not one."}`
+	proposalItem = `{"id":"EP-0001","kind":"proposal","state":"pending_approval","lane":"urgent","target":"catalog/sample-rate-checker/description","repository":"clearedstack.com","file":"src/data/sample-catalog.json","edit_kind":"DATA","change":"The description says 'calender'.\nIt should say 'calendar'.","reason":"A spelling mistake."}`
 )
 
 func TestOverrideIsRefusedWithoutAWrittenReason(t *testing.T) {
@@ -43,10 +43,10 @@ func TestOverrideIsRefusedWithoutAWrittenReason(t *testing.T) {
 	}
 
 	r := cs(t, spool, "", "list")
-	wantList := `ID       KIND       STATE             LANE    DETAIL                                               SUMMARY
-EP-0001  proposal   pending_approval  urgent  DATA catalog/sample-rate-checker/description         The description says 'calender'. It should say 'calendar'.
-PA-0001  candidate  scored            normal  score 82, recommended approved                       Check a sample labor rate against a made-up ceiling
-PA-0002  candidate  screened-out      normal  Fails the one-job gate: it does three jobs, not ...  Draft, price and submit a whole sample bid
+	wantList := `ID       KIND      STATE             LANE    DETAIL                                        SUMMARY
+EP-0001  proposal  pending_approval  urgent  DATA catalog/sample-rate-checker/description  The description says 'calender'. It should say 'calendar'.
+PA-0001  item      scored            normal  score 82, recommended approved                Check a sample labor rate against a made-up ceiling
+PA-0002  item      screened_out      normal  One job: It does three jobs, not one.         Draft, price and submit a whole sample bid
 `
 	if r.code != exitOK || r.stdout != wantList {
 		t.Errorf("list:\n%s\nwant:\n%s", r.stdout, wantList)
@@ -86,7 +86,7 @@ PA-0002  candidate  screened-out      normal  Fails the one-job gate: it does th
 	if err := json.Unmarshal([]byte(r.stdout), &res); err != nil {
 		t.Fatal(err)
 	}
-	if res.Rule != "decision.override" || res.Record.From != "screened-out" || res.Record.To != "observed" ||
+	if res.Rule != "decision.override" || res.Record.From != "screened_out" || res.Record.To != "observed" ||
 		!res.Record.Override || res.Record.Reason != "Reshaped to do one job." || res.Record.At != "2026-01-05T10:00:00Z" {
 		t.Errorf("record: %+v", res)
 	}
@@ -127,16 +127,21 @@ func TestBrokenAndUnfamiliarItems(t *testing.T) {
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.malformed:") {
 		t.Errorf("broken: %+v", r)
 	}
-	r = cs(t, spool, strings.Replace(scoredItem, `"candidate"`, `"bundle"`, 1), "add")
+	r = cs(t, spool, strings.Replace(scoredItem, `"item"`, `"bundle"`, 1), "add")
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_NEEDS_SUBTOOL intake.kind_unfamiliar PA-0001:") {
 		t.Errorf("unfamiliar: %+v", r)
+	}
+	r = cs(t, spool, strings.Replace(scoredItem, `"PA-0001"`, `"PA-01"`, 1), "add")
+	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.id_invalid PA-01:") {
+		t.Errorf("identifier: %+v", r)
 	}
 	r = cs(t, spool, strings.Repeat("x", 40<<10), "add")
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.payload_too_large:") {
 		t.Errorf("too large: %+v", r)
 	}
-	// The pause is spooled for Muster. Nothing reached the inbox.
-	if r = cs(t, spool, "", "log"); strings.Count(r.stdout, "\n") != 1 || !strings.Contains(r.stdout, `"call":"needs_subtool"`) {
+	// Nothing reached the inbox, and with no lease there is nothing to tell
+	// Muster.
+	if r = cs(t, spool, "", "log"); r.stdout != "" {
 		t.Errorf("log: %s", r.stdout)
 	}
 	if r = cs(t, spool, "", "list"); strings.Count(r.stdout, "\n") != 1 {
@@ -158,6 +163,9 @@ func TestUsage(t *testing.T) {
 		{"add", filepath.Join(spool, "no-such-file")},
 		{"run"},
 		{"run", "-standin", filepath.Join(spool, "no-such-file")},
+		{"run", "-standin", "x", "-muster", "http://muster.invalid"},
+		{"run", "-muster", "muster.invalid:8080"},
+		{"run", "-muster", "http://user:made-up@muster.invalid"},
 	} {
 		r := cs(t, spool, "", args...)
 		if r.code != exitUsage || r.stdout != "" {
@@ -212,8 +220,9 @@ func TestExampleSeedRuns(t *testing.T) {
 	for _, want := range []string{
 		`"rule":"lease.timeout","code":"E_TIMEOUT"`,
 		`"rule":"intake.accept","item":"PA-0001"`,
-		`"rule":"intake.kind_unfamiliar","code":"E_NEEDS_SUBTOOL","item":"PA-0004"`,
-		`"rule":"spool.acknowledged","item":"PA-0004","seq":1`,
+		`"rule":"intake.accept","item":"PA-0002"`,
+		`"rule":"intake.recommendation_unfamiliar","code":"E_NEEDS_SUBTOOL","item":"PA-0004"`,
+		`"rule":"spool.refused","code":"E_PARSE","item":"PA-0004","seq":1`,
 	} {
 		if !strings.Contains(r.stderr, want) {
 			t.Errorf("the worker log lacks %s:\n%s", want, r.stderr)

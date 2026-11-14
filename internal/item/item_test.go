@@ -18,9 +18,19 @@ func TestMovesAreExactlyTheSpecifiedOnes(t *testing.T) {
 		{Proposal, PendingApproval, Approve}: Approved,
 		{Proposal, PendingApproval, Decline}: Declined,
 	}
-	kinds := []Kind{Candidate, Proposal, "bundle"}
-	states := []State{Scored, ScreenedOut, Observed, Approved, Linked, Merged, Parked, Rejected, NeedsSubtool, PendingApproval, Declined, "galloping"}
-	outcomes := []Outcome{Approve, Link, Merge, Park, Reject, Override, Decline, "escalate"}
+	// A held item may be released or kept in any of the fourteen item
+	// states, and stays in that state either way.
+	fourteen := []State{Discovered, Recorded, Observed, ScreenedOut, Scored, Approved, Building, Live, Parked, Linked, Merged, Rejected, Retired, NeedsSubtool}
+	if len(fourteen) != 14 {
+		t.Fatal("there are fourteen item states")
+	}
+	for _, s := range fourteen {
+		want[key{Release, s, LetGo}] = s
+		want[key{Release, s, Keep}] = s
+	}
+	kinds := []Kind{Candidate, Proposal, Release, "bundle"}
+	states := append([]State{PendingApproval, Declined, "galloping"}, fourteen...)
+	outcomes := []Outcome{Approve, Link, Merge, Park, Reject, Override, Decline, LetGo, Keep, "escalate"}
 	n := 0
 	for _, k := range kinds {
 		for _, s := range states {

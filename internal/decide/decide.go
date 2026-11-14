@@ -60,6 +60,10 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 		item.Approve: rule.DecisionProposalApprove,
 		item.Decline: rule.DecisionProposalDecline,
 	},
+	item.Release: {
+		item.LetGo: rule.DecisionRelease,
+		item.Keep:  rule.DecisionKeep,
+	},
 }
 
 // Apply checks a decision against the item it is for. The checks run in a
@@ -72,7 +76,10 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 //  5. the field the outcome needs is there: the tool for a link, the parent
 //     for a merge, the blocker for a park, the reason for a rejection;
 //  6. an override has a written reason. An override is reopening a
-//     screened-out item, or choosing against the recommendation.
+//     screened_out item, or choosing against the recommendation.
+//
+// Releasing or keeping a held item moves it nowhere: it keeps the state it
+// is held in. A reason may be given and is not required.
 func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 	fail := func(id rule.ID) (Result, *rule.Error) { return Result{}, rule.Fail(id, it.ID) }
 
@@ -108,8 +115,8 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 		return fail(rule.DecisionRejectReasonMissing)
 	}
 
-	override := it.State == item.ScreenedOut ||
-		(it.State == item.Scored && to != it.Recommendation)
+	override := it.Kind == item.Candidate &&
+		(it.State == item.ScreenedOut || (it.State == item.Scored && to != it.Recommendation))
 	if override && reason == "" {
 		return fail(rule.DecisionOverrideReasonMissing)
 	}

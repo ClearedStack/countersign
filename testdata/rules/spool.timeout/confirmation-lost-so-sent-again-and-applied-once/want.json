@@ -16,11 +16,11 @@
       "record": {
         "contract": "v1",
         "call": "complete",
-        "id": "aa7a45d1a8162f835070d7a5a147cdcf",
+        "id": "481608320f28f8f8e619e1cfd6a506b9",
         "worker": "countersign",
         "item": "PA-0063",
         "at": "2026-01-05T10:00:00Z",
-        "kind": "candidate",
+        "kind": "item",
         "outcome": "approve",
         "from": "scored",
         "to": "approved",
@@ -62,14 +62,15 @@
     {
       "seq": 1,
       "status": "acknowledged",
+      "lease": "PA-0063.1",
       "record": {
         "contract": "v1",
         "call": "complete",
-        "id": "aa7a45d1a8162f835070d7a5a147cdcf",
+        "id": "481608320f28f8f8e619e1cfd6a506b9",
         "worker": "countersign",
         "item": "PA-0063",
         "at": "2026-01-05T10:00:00Z",
-        "kind": "candidate",
+        "kind": "item",
         "outcome": "approve",
         "from": "scored",
         "to": "approved",
@@ -90,19 +91,25 @@
     ],
     "ledger": [
       {
-        "contract": "v1",
         "call": "complete",
-        "id": "aa7a45d1a8162f835070d7a5a147cdcf",
-        "worker": "countersign",
-        "item": "PA-0063",
-        "at": "2026-01-05T10:00:00Z",
-        "kind": "candidate",
-        "outcome": "approve",
-        "from": "scored",
-        "to": "approved",
-        "lane": "normal",
-        "score": 82,
-        "recommendation": "approved"
+        "lease": "PA-0063.1",
+        "id": "PA-0063",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "481608320f28f8f8e619e1cfd6a506b9",
+          "worker": "countersign",
+          "item": "PA-0063",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
       }
     ],
     "dispatched": []

@@ -1,0 +1,11 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0014",
+    "kind": "release",
+    "state": "scored",
+    "lane": "normal",
+    "held_worker": "countersign",
+    "held_code": "E_PARSE"
+  }
+}

@@ -45,26 +45,22 @@ const (
 )
 
 // Held is an item waiting for the owner. Arrived orders items within a lane.
+// Lease is the token Muster leased it under, or empty for an item added by
+// hand.
 type Held struct {
 	Arrived uint64    `json:"arrived"`
+	Lease   string    `json:"lease,omitempty"`
 	Item    item.Item `json:"item"`
 }
 
-// Entry is one record in the spool or the log.
+// Entry is one record in the spool or the log. Lease is the token the record
+// is sent under.
 type Entry struct {
 	Seq         uint64        `json:"seq"`
 	Status      string        `json:"status"`
+	Lease       string        `json:"lease,omitempty"`
 	Fingerprint string        `json:"fingerprint,omitempty"`
 	Record      record.Record `json:"record"`
-}
-
-// Intake is what happened to an arriving item. Exactly one of Item and Err
-// is set. Record is the refusal or pause that was spooled for Muster, if any.
-type Intake struct {
-	Rule   rule.ID        `json:"rule"`
-	Item   *item.Item     `json:"item,omitempty"`
-	Err    *rule.Error    `json:"-"`
-	Record *record.Record `json:"record,omitempty"`
 }
 
 // Store is a directory of state.
@@ -262,12 +258,12 @@ func (s *Store) nextSeq() (uint64, error) {
 	return max + 1, nil
 }
 
-func (s *Store) spool(rec record.Record) error {
+func (s *Store) spool(lease string, rec record.Record) error {
 	seq, err := s.nextSeq()
 	if err != nil {
 		return err
 	}
-	return writeAtomic(s.outboxDir(), seqName(seq), Entry{Seq: seq, Status: Waiting, Record: rec})
+	return writeAtomic(s.outboxDir(), seqName(seq), Entry{Seq: seq, Status: Waiting, Lease: lease, Record: rec})
 }
 
 // Pending lists the items waiting for the owner: urgent lane first, then
@@ -296,46 +292,11 @@ func (s *Store) Get(id string) (Held, error) {
 	return h, nil
 }
 
-// Intake checks an arriving item. An accepted item joins the inbox. A broken
-// item is refused (E_PARSE) and an unfamiliar one is paused
-// (E_NEEDS_SUBTOOL): either way a record for Muster is spooled when the item
-// has a usable identifier, and the item is not shown to the owner.
-//
-// The returned error is only ever store.unavailable. A refusal or a pause is
-// reported in the Intake.
-func (s *Store) Intake(leaseID string, payload []byte, at time.Time) (Intake, error) {
-	it, perr := item.Parse(leaseID, payload)
-	var in Intake
-	err := s.locked(func() error {
-		if perr != nil {
-			in = Intake{Rule: perr.Rule, Err: perr}
-			if perr.Item == "" {
-				return nil
-			}
-			call := record.Fail
-			if perr.Code() == rule.NeedsSubtool {
-				call = record.NeedsSubtool
-			}
-			rec := record.Record{
-				Call:        call,
-				Item:        perr.Item,
-				At:          record.Stamp(at),
-				Code:        string(perr.Code()),
-				Rule:        string(perr.Rule),
-				Fingerprint: perr.Fingerprint(),
-			}
-			if call == record.NeedsSubtool {
-				rec.To = item.NeedsSubtool
-			}
-			rec = rec.Seal()
-			if err := s.spool(rec); err != nil {
-				return err
-			}
-			in.Record = &rec
-			// Whatever was held under this identifier is no longer current.
-			return removeSynced(s.pendingDir(), perr.Item+".json")
-		}
-
+// Accept puts a checked item in the inbox. lease is the token Muster leased
+// it under, or empty for an item added by hand. An item that is already
+// waiting keeps its place and takes the new lease.
+func (s *Store) Accept(lease string, it item.Item) error {
+	return s.locked(func() error {
 		arrived := uint64(0)
 		held, err := s.readPending()
 		if err != nil {
@@ -343,7 +304,7 @@ func (s *Store) Intake(leaseID string, payload []byte, at time.Time) (Intake, er
 		}
 		for _, h := range held {
 			if h.Item.ID == it.ID {
-				arrived = h.Arrived // leased again: keep its place
+				arrived = h.Arrived
 			}
 		}
 		if arrived == 0 {
@@ -354,16 +315,65 @@ func (s *Store) Intake(leaseID string, payload []byte, at time.Time) (Intake, er
 			}
 			arrived++
 		}
-		if err := writeAtomic(s.pendingDir(), it.ID+".json", Held{Arrived: arrived, Item: it}); err != nil {
+		return writeAtomic(s.pendingDir(), it.ID+".json", Held{Arrived: arrived, Lease: lease, Item: it})
+	})
+}
+
+// Report spools what Countersign tells Muster about a leased item it will
+// not show the owner: a fail for a broken item (E_PARSE), a needs_subtool
+// for an unfamiliar one (E_NEEDS_SUBTOOL). The item leaves the inbox if it
+// was there.
+//
+// If the same report about the same item is already waiting, or Muster has
+// already refused it, nothing new is spooled and the result is nil. Muster
+// offers an item again when its lease runs out, and saying the same thing
+// each time would only fill the log.
+func (s *Store) Report(lease string, perr *rule.Error, at time.Time) (*record.Record, error) {
+	var out *record.Record
+	err := s.locked(func() error {
+		if perr.Item != "" {
+			if err := removeSynced(s.pendingDir(), perr.Item+".json"); err != nil {
+				return err
+			}
+		}
+		call := record.Fail
+		if perr.Code() == rule.NeedsSubtool {
+			call = record.NeedsSubtool
+		}
+		for _, sub := range []string{"outbox", "done"} {
+			entries, err := s.readEntries(sub)
+			if err != nil {
+				return err
+			}
+			for _, e := range entries {
+				same := e.Record.Call == call && e.Record.Item == perr.Item && e.Record.Rule == string(perr.Rule)
+				if same && perr.Item != "" && (e.Status == Waiting || e.Status == Refused) {
+					return nil
+				}
+			}
+		}
+		rec := record.Record{
+			Call:        call,
+			Item:        perr.Item,
+			At:          record.Stamp(at),
+			Code:        string(perr.Code()),
+			Rule:        string(perr.Rule),
+			Fingerprint: perr.Fingerprint(),
+		}
+		if call == record.NeedsSubtool {
+			rec.To = item.NeedsSubtool
+		}
+		rec = rec.Seal()
+		if err := s.spool(lease, rec); err != nil {
 			return err
 		}
-		in = Intake{Rule: rule.IntakeAccept, Item: &it}
+		out = &rec
 		return nil
 	})
 	if err != nil {
-		return Intake{}, err
+		return nil, err
 	}
-	return in, nil
+	return out, nil
 }
 
 // Decide records the owner's decision on a waiting item. The record goes to
@@ -400,7 +410,7 @@ func (s *Store) Decide(d decide.Decision, at time.Time) (decide.Result, error) {
 		if derr != nil {
 			return derr
 		}
-		if err := s.spool(r.Record); err != nil {
+		if err := s.spool(h.Lease, r.Record); err != nil {
 			return err
 		}
 		if err := removeSynced(s.pendingDir(), d.Item+".json"); err != nil {
