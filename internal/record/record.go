@@ -49,6 +49,11 @@ type Record struct {
 	Parent         string       `json:"parent,omitempty"`
 	Blocker        string       `json:"blocker,omitempty"`
 
+	// Waybill is the specification the owner reviewed and attached to an
+	// approval, carried as the owner gave it with only white space removed.
+	// It is what stage 5 compiles. Countersign changes nothing else in it.
+	Waybill json.RawMessage `json:"waybill,omitempty"`
+
 	// A refusal or a pause (calls "fail" and "needs_subtool").
 	Code        string `json:"code,omitempty"`
 	Rule        string `json:"rule,omitempty"`

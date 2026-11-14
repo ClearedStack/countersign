@@ -146,6 +146,8 @@ const (
 	MaxReason   = 2000     // a decision reason, which Logbook limits to 2000 bytes
 	MaxText     = 4096     // a blocker or held screening note
 	MaxProposal = 4096     // the change and reason of an edit proposal, together
+	MaxWaybill  = 48 << 10 // the specification file the owner attaches to an approval
+	MaxResult   = 63 << 10 // the decision record sent with complete: Muster's 64 KiB body, less the call around it
 	MinScore    = 20
 	MaxScore    = 100
 )
