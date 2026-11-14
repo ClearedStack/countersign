@@ -206,3 +206,30 @@ func TestRepoRules(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCIWorkflow(t *testing.T) {
+	raw, err := os.ReadFile(".github/workflows/tests.yml")
+	if err != nil {
+		t.Fatalf(".github/workflows/tests.yml: %v", err)
+	}
+	ci := string(raw)
+	if strings.Contains(ci, "\t") {
+		t.Error(".github/workflows/tests.yml contains tab characters")
+	}
+	for _, want := range []string{
+		"permissions:\n  contents: read",
+		"gofmt -l .",
+		"go vet ./...",
+		"go test -race -count=1 ./...",
+		"go test -fuzz=",
+	} {
+		if !strings.Contains(ci, want) {
+			t.Errorf(".github/workflows/tests.yml is missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"docker/login-action", "ko publish", "write-all", "contents: write"} {
+		if strings.Contains(ci, forbidden) {
+			t.Errorf(".github/workflows/tests.yml must be tests-only, found %q", forbidden)
+		}
+	}
+}

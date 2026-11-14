@@ -80,6 +80,7 @@ In one terminal, run the loop over the made-up items in [`examples/standin.json`
 In another terminal, be the owner:
 
 ```sh
+./countersign -spool ./spool status            # one-screen summary (-json for scripts)
 ./countersign -spool ./spool list              # what is waiting
 ./countersign -spool ./spool review            # step through waiting items interactively (-kind, -lane, or ID...)
 ./countersign -spool ./spool show PA-0002      # one item, and the outcomes allowed for it
@@ -98,7 +99,7 @@ In another terminal, be the owner:
 
 Within two seconds the first terminal logs `spool.acknowledged` for each decision. The stand-in lives in the memory of the `run` command, so stopping it forgets the leases. The spool is on disk and survives.
 
-Other commands: `review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]` walks waiting items one at a time and prompts only for the fields each outcome needs (leaving skipped or interrupted items untouched), `add [FILE]` checks in one item by hand for trying the rules (it has no lease, so a decision on it cannot be sent), `decide -f FILE` takes a decision as JSON, `rules` lists every rule with its error code, and `version` prints the version. A command exits with 0 on success, 1 with a public error on standard error, and 2 for a mistake in how it was called.
+Other commands: `status [-json]` summarizes waiting inbox counts by lane and kind alongside outbox, stopped and settled counts, `review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]` walks waiting items one at a time and prompts only for the fields each outcome needs (leaving skipped or interrupted items untouched), `add [FILE]` checks in one item by hand for trying the rules (it has no lease, so a decision on it cannot be sent), `decide -f FILE` takes a decision as JSON, `rules` lists every rule with its error code, and `version` prints the version. A command exits with 0 on success, 1 with a public error on standard error, and 2 for a mistake in how it was called.
 
 To build the image without publishing it:
 
@@ -108,7 +109,7 @@ KO_DOCKER_REPO=registry.invalid/countersign ko build --base-import-paths --push=
 
 ## Rules and saved examples
 
-Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 169 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
+Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 171 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
 
 | Rules | What they cover |
 | --- | --- |
@@ -121,6 +122,8 @@ Every rule has an identifier and at least one saved example: an input and the ex
 After a deliberate change, `go test . -update` rewrites the expected outputs. Read the difference before committing it.
 
 [`testdata/contract/`](testdata/contract) is a copy of the 52 saved examples in Muster's contract, taken at Muster's commit `470dddf`. A test replays them against Countersign's client: every worker call and release call (both main requests and setup calls in `given.calls`) is made and must match the example wire request and headers, each refusal must be sorted into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
+
+Native Go fuzz targets (`FuzzDecodeLease`, `FuzzItemParse`, `FuzzDecideParseAndApply`, `FuzzRelease`, `FuzzReadPromptLine`) check that untrusted lease payloads, visitor proposals, decision inputs and interactive prompt streams never panic, never leak input text in errors, and always preserve Logbook's byte and control-character limits.
 
 ## Layout
 
@@ -139,6 +142,7 @@ After a deliberate change, `go test . -update` rewrites the expected outputs. Re
 | [`testdata/rules`](testdata/rules) | The saved examples |
 | [`testdata/contract`](testdata/contract) | Muster's contract examples |
 | [`.ko.yaml`](.ko.yaml) | The image build |
+| [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Read-only CI running `gofmt`, `go vet`, `go test -race`, and bounded fuzzers |
 
 ## Not yet done
 
