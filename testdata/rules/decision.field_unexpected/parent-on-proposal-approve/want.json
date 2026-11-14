@@ -1,0 +1,5 @@
+{
+  "rule": "decision.field_unexpected",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.field_unexpected EP-0001: the decision carries a field that outcome does not take [fp 8cace002e21ba89c]"
+}

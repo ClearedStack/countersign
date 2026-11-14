@@ -1,0 +1,57 @@
+# Default-deny NetworkPolicy for Countersign in cs-workers.
+#
+# Countersign accepts no incoming connections at all (decisions are recorded on
+# the local spool inside the pod, and public views are served from Logbook).
+# Outbound traffic is closed except for DNS lookups in kube-system and HTTP to
+# Muster on port 8080 in clearedstack.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: countersign-default-deny
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: countersign
+    app.kubernetes.io/part-of: clearedstack
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: countersign
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: countersign-egress
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: countersign
+    app.kubernetes.io/part-of: clearedstack
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: countersign
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: clearedstack
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: muster
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

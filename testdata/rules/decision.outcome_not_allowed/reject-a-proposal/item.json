@@ -1,0 +1,12 @@
+{
+  "id": "EP-0001",
+  "kind": "proposal",
+  "state": "pending_approval",
+  "lane": "normal",
+  "target": "catalog/sample-rate-checker/description",
+  "repository": "clearedstack.com",
+  "file": "src/data/sample-catalog.json",
+  "edit_kind": "DATA",
+  "change": "The description says 'calender'. It should say 'calendar'.",
+  "reason": "A spelling mistake."
+}

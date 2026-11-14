@@ -1,0 +1,5 @@
+{
+  "rule": "decision.text_invalid",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.text_invalid PA-0001: a text field is too long or holds control characters [fp 2df2d4f7cf1defe7]"
+}

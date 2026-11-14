@@ -1,0 +1,68 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "steps": [
+      {
+        "kind": "proposal",
+        "id": "EP-0070",
+        "state": "pending_approval",
+        "lane": "normal",
+        "proposal": {
+          "target": "catalog/no-such-tool/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
+      },
+      {
+        "kind": "proposal",
+        "id": "EP-0071",
+        "state": "pending_approval",
+        "lane": "normal",
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0070",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0071",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 600
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

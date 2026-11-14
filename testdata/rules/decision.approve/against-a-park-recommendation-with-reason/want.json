@@ -1,0 +1,20 @@
+{
+  "rule": "decision.approve",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "47bf5ddd47dc39ba301f9c3e7945ca9b",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "item",
+    "outcome": "approve",
+    "from": "scored",
+    "to": "approved",
+    "lane": "normal",
+    "override": true,
+    "score": 70,
+    "recommendation": "parked",
+    "reason": "The missing sample table was published last week, so nothing blocks it now."
+  }
+}

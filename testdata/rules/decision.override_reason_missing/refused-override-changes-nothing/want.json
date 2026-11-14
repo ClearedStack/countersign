@@ -1,0 +1,110 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0042"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.override_reason_missing",
+      "code": "E_PARSE",
+      "error": "E_PARSE decision.override_reason_missing PA-0042: an override needs a written reason [fp e9a7b0ea83799a82]"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "rule": "decision.override",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "129d0245bbd8ec16a65c54b4a2cc0ee0",
+        "worker": "countersign",
+        "item": "PA-0042",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0042",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0042.1.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "129d0245bbd8ec16a65c54b4a2cc0ee0",
+        "worker": "countersign",
+        "item": "PA-0042",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0042",
+        "state": "observed",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0042.1.1",
+        "id": "PA-0042",
+        "state": "observed",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "129d0245bbd8ec16a65c54b4a2cc0ee0",
+          "worker": "countersign",
+          "item": "PA-0042",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "override",
+          "from": "screened_out",
+          "to": "observed",
+          "lane": "normal",
+          "override": true,
+          "reason": "Reshaped to do one job."
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

@@ -1,0 +1,7 @@
+# What Argo CD or kubectl kustomize applies for Countersign.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deploy/networkpolicy.yaml
+  - deploy/countersign.yaml

@@ -1,0 +1,5 @@
+{
+  "rule": "decision.outcome_unknown",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.outcome_unknown PA-0001: the outcome is not one Countersign knows [fp a81bddc164e15066]"
+}

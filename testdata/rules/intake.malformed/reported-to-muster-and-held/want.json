@@ -1,0 +1,95 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0020"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.malformed",
+          "code": "E_PARSE",
+          "item": "PA-0021",
+          "fingerprint": "6d090d60e03b2dff"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0021",
+          "seq": 1
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:10:20Z",
+          "rule": "lease.lost",
+          "item": "PA-0020"
+        },
+        {
+          "at": "2026-01-05T10:10:20Z",
+          "rule": "intake.accept",
+          "item": "PA-0020"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0020"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0021.2.1",
+      "record": {
+        "contract": "v1",
+        "call": "fail",
+        "id": "186d251a98bb8af0cce14c9bbc4a9f22",
+        "worker": "countersign",
+        "item": "PA-0021",
+        "at": "2026-01-05T10:00:00Z",
+        "code": "E_PARSE",
+        "rule": "intake.malformed",
+        "fingerprint": "6d090d60e03b2dff"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0020",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0021",
+        "status": "held"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "fail",
+        "lease": "PA-0021.2.1",
+        "id": "PA-0021",
+        "code": "E_PARSE"
+      }
+    ],
+    "dispatched": []
+  }
+}

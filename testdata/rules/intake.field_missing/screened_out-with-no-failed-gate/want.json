@@ -1,0 +1,16 @@
+{
+  "rule": "intake.field_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_missing PA-0002: the item lacks something its kind and state require [fp cd66d99de2cdb1eb]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "4aee150f48f033cd45b1f80114f94d34",
+    "worker": "countersign",
+    "item": "PA-0002",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.field_missing",
+    "fingerprint": "cd66d99de2cdb1eb"
+  }
+}

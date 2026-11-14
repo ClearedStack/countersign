@@ -1,0 +1,77 @@
+{
+  "steps": [
+    {
+      "do": "add",
+      "rule": "intake.accept",
+      "item": {
+        "id": "PA-0072",
+        "kind": "item",
+        "state": "scored",
+        "lane": "normal",
+        "title": "Check a sample labor rate against a made-up ceiling",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "dd3a42d4e69ab70e2b15bf32359df360",
+        "worker": "countersign",
+        "item": "PA-0072",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.no_lease",
+          "code": "E_PARSE",
+          "item": "PA-0072",
+          "seq": 1,
+          "fingerprint": "dd94dfcebcde4402"
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "fingerprint": "dd94dfcebcde4402",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "dd3a42d4e69ab70e2b15bf32359df360",
+        "worker": "countersign",
+        "item": "PA-0072",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [],
+    "ledger": [],
+    "dispatched": []
+  }
+}

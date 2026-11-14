@@ -1,0 +1,16 @@
+{
+  "rule": "intake.malformed",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.malformed EP-0001: the item or lease is not one well-formed JSON object of the expected shape [fp bc88db05afd6248e]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "65acd9bd57d2c5651ed63ea7f91e70da",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.malformed",
+    "fingerprint": "bc88db05afd6248e"
+  }
+}

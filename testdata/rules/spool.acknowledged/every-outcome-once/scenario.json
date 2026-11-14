@@ -1,0 +1,332 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "steps": [
+      {
+        "kind": "item",
+        "id": "PA-0050",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 82,
+            "recommendation": "build",
+            "split_flag": false
+          }
+        }
+      },
+      {
+        "kind": "item",
+        "id": "PA-0051",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 60,
+            "recommendation": "park",
+            "split_flag": false
+          }
+        }
+      },
+      {
+        "kind": "item",
+        "id": "PA-0052",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 41,
+            "recommendation": "reject",
+            "split_flag": false
+          }
+        }
+      },
+      {
+        "kind": "item",
+        "id": "PA-0053",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 88,
+            "recommendation": "link",
+            "split_flag": false
+          }
+        }
+      },
+      {
+        "kind": "item",
+        "id": "PA-0054",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 82,
+            "recommendation": "build",
+            "split_flag": false
+          }
+        }
+      },
+      {
+        "kind": "item",
+        "id": "PA-0055",
+        "state": "screened_out",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": false,
+                "reason": "It does three jobs, not one."
+              }
+            },
+            "factors": {}
+          }
+        }
+      },
+      {
+        "kind": "proposal",
+        "id": "EP-0050",
+        "state": "pending_approval",
+        "lane": "normal",
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
+      },
+      {
+        "kind": "proposal",
+        "id": "EP-0051",
+        "state": "pending_approval",
+        "lane": "normal",
+        "proposal": {
+          "target": "workers/sample-worker/settings/retry-limit",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "CONFIG",
+          "change": "Raise the retry limit from 3 to 5.",
+          "reason": "A spelling mistake."
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0050",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0051",
+        "outcome": "park",
+        "blocker": "Waiting for the made-up sample table."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0052",
+        "outcome": "reject",
+        "reason": "Scores 41: a rare edge case."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0053",
+        "outcome": "link",
+        "tool": "Sample Rate Checker (made-up existing tool)"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0054",
+        "outcome": "merge",
+        "parent": "sample-rate-toolkit",
+        "reason": "One more check inside the toolkit."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0055",
+        "outcome": "override",
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0050",
+        "outcome": "approve"
+      }
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "EP-0051",
+        "outcome": "decline",
+        "reason": "Three retries is deliberate."
+      }
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

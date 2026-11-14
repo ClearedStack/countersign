@@ -1,0 +1,12 @@
+{
+  "id": "EP-0003",
+  "kind": "proposal",
+  "state": "pending_approval",
+  "lane": "backfill",
+  "target": "workers/sample-worker/rules",
+  "repository": "clearedstack.com",
+  "file": "src/data/sample-catalog.json",
+  "edit_kind": "ISSUE",
+  "change": "There is no rule for two-column sample pages.",
+  "reason": "A spelling mistake."
+}

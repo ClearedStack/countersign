@@ -1,0 +1,19 @@
+{
+  "rule": "decision.reject",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "05df07ad0b6810ee206833ed6b211836",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "item",
+    "outcome": "reject",
+    "from": "scored",
+    "to": "rejected",
+    "lane": "normal",
+    "score": 41,
+    "recommendation": "rejected",
+    "reason": "Scores 41: a rare edge case with fragile upkeep."
+  }
+}

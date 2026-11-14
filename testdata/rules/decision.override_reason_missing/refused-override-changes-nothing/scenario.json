@@ -1,0 +1,64 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "steps": [
+      {
+        "kind": "item",
+        "id": "PA-0042",
+        "state": "screened_out",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": false,
+                "reason": "It does three jobs, not one."
+              }
+            },
+            "factors": {}
+          }
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0042",
+        "outcome": "override"
+      }
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "decide",
+      "decision": {
+        "item": "PA-0042",
+        "outcome": "override",
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "rule": "decision.override",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "61eb08f10d384a79a2cfd1d68118db33",
+    "worker": "countersign",
+    "item": "PA-0002",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "item",
+    "outcome": "override",
+    "from": "screened_out",
+    "to": "observed",
+    "lane": "normal",
+    "override": true,
+    "reason": "The idea was reshaped to do one job: price a single sample line item."
+  }
+}

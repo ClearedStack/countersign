@@ -1,0 +1,17 @@
+{
+  "rule": "intake.lane_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.lane_unfamiliar PA-0001: there is no rule for this priority lane [fp 495fef99418c533e]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "bd67921363acdd5555eabbb469dc421a",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.lane_unfamiliar",
+    "fingerprint": "495fef99418c533e"
+  }
+}

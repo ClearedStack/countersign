@@ -1,0 +1,115 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.kind_unfamiliar",
+          "code": "E_NEEDS_SUBTOOL",
+          "item": "PA-0030",
+          "fingerprint": "58306fb6394bd6d9"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0031"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0030"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.refused",
+          "code": "E_PARSE",
+          "item": "PA-0030",
+          "seq": 1,
+          "fingerprint": "c66f8ec8cbd363a6"
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:01:00Z",
+          "rule": "intake.kind_unfamiliar",
+          "code": "E_NEEDS_SUBTOOL",
+          "item": "PA-0030",
+          "fingerprint": "58306fb6394bd6d9"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.item_unknown",
+      "code": "E_PARSE",
+      "error": "E_PARSE decision.item_unknown PA-0030: no item with that identifier is waiting for a decision [fp 8a3174a34ea99b76]"
+    }
+  ],
+  "pending": [
+    "PA-0031",
+    "EP-0030"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "lease": "PA-0030.1.1",
+      "fingerprint": "c66f8ec8cbd363a6",
+      "record": {
+        "contract": "v1",
+        "call": "needs_subtool",
+        "id": "ed7188cded3758ac06bb2906f656e38e",
+        "worker": "countersign",
+        "item": "PA-0030",
+        "at": "2026-01-05T10:00:00Z",
+        "to": "needs_subtool",
+        "code": "E_NEEDS_SUBTOOL",
+        "rule": "intake.kind_unfamiliar",
+        "fingerprint": "58306fb6394bd6d9"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0030",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0031",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "EP-0030",
+        "state": "pending_approval",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

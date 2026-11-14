@@ -1,0 +1,17 @@
+{
+  "rule": "intake.field_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.field_unfamiliar PA-0001: the lease carries a field Countersign has no rule for [fp 1250320a0afafe3f]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "656c836cdb48e56ec970de05038a8eb2",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.field_unfamiliar",
+    "fingerprint": "1250320a0afafe3f"
+  }
+}

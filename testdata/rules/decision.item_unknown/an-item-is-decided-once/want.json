@@ -1,0 +1,107 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0041"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "7ef3c4d38c7cb9e27134bef98975b395",
+        "worker": "countersign",
+        "item": "PA-0041",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.item_unknown",
+      "code": "E_PARSE",
+      "error": "E_PARSE decision.item_unknown PA-0041: no item with that identifier is waiting for a decision [fp 379cafcd4cba313f]"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0041",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0041.1.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "7ef3c4d38c7cb9e27134bef98975b395",
+        "worker": "countersign",
+        "item": "PA-0041",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0041",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0041.1.1",
+        "id": "PA-0041",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "7ef3c4d38c7cb9e27134bef98975b395",
+          "worker": "countersign",
+          "item": "PA-0041",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

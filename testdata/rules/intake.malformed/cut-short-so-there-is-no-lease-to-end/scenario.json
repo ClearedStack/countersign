@@ -1,0 +1,35 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "steps": [],
+    "raw": [
+      {
+        "id": "PA-0022",
+        "body": "{\"lease\": \"{{lease}}\", \"kind\": \"item\", \"id\": \"PA-0022\", \"state\": "
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 20
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 60
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

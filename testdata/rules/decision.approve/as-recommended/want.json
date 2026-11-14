@@ -1,0 +1,18 @@
+{
+  "rule": "decision.approve",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "f7b80437e2c1d34345f5c610cd615244",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "item",
+    "outcome": "approve",
+    "from": "scored",
+    "to": "approved",
+    "lane": "normal",
+    "score": 82,
+    "recommendation": "approved"
+  }
+}

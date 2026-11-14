@@ -1,0 +1,102 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0073"
+        }
+      ]
+    },
+    {
+      "do": "release",
+      "rule": "decision.release",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "111fd8e79c96a00e346fb9d243ea2218",
+        "worker": "countersign",
+        "item": "PA-0073",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    },
+    {
+      "do": "release",
+      "rule": "decision.release",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "4ef12f57a9ae0b15a58fec10e63ce42f",
+        "worker": "countersign",
+        "item": "PA-0404",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.refused",
+          "code": "E_PARSE",
+          "item": "PA-0073",
+          "seq": 1,
+          "fingerprint": "35e543290ef0fbb2"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.refused",
+          "code": "E_PARSE",
+          "item": "PA-0404",
+          "seq": 2,
+          "fingerprint": "4ba2592eb1cca781"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0073"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "fingerprint": "35e543290ef0fbb2",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "111fd8e79c96a00e346fb9d243ea2218",
+        "worker": "countersign",
+        "item": "PA-0073",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "refused",
+      "fingerprint": "4ba2592eb1cca781",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "4ef12f57a9ae0b15a58fec10e63ce42f",
+        "worker": "countersign",
+        "item": "PA-0404",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0073",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "rule": "decision.malformed",
+  "code": "E_PARSE",
+  "error": "E_PARSE decision.malformed PA-0001: the decision is not one well-formed JSON object of the expected shape [fp 413060e8d5fd53fb]"
+}

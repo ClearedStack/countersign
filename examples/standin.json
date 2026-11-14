@@ -1,0 +1,67 @@
+{
+  "ownership": [
+    "catalog/sample-rate-checker/description",
+    "workers/sample-worker/settings/retry-limit"
+  ],
+  "steps": [
+    {
+      "kind": "item",
+      "id": "PA-0001",
+      "state": "scored",
+      "lane": "normal",
+      "results": {
+        "sextant": {"core_job": {"value": "Check a sample labor rate against a made-up ceiling"}},
+        "assay": {"score": 82, "recommendation": "build"}
+      }
+    },
+    {
+      "kind": "item",
+      "id": "PA-0002",
+      "state": "screened_out",
+      "lane": "normal",
+      "results": {
+        "sextant": {"core_job": {"value": "Draft, price and submit a whole sample bid"}},
+        "assay": {
+          "gates": {
+            "public_source": {"passed": true},
+            "one_job": {"passed": false, "reason": "It does three jobs, not one."}
+          }
+        }
+      }
+    },
+    {
+      "kind": "item",
+      "id": "PA-0003",
+      "state": "scored",
+      "lane": "backfill",
+      "results": {
+        "sextant": {"core_job": {"value": "Count the pages in a made-up proposal volume"}},
+        "assay": {"score": 60, "recommendation": "park"}
+      }
+    },
+    {
+      "kind": "proposal",
+      "id": "EP-0001",
+      "state": "pending_approval",
+      "lane": "normal",
+      "proposal": {
+        "target": "catalog/sample-rate-checker/description",
+        "repository": "clearedstack.com",
+        "file": "src/data/sample-catalog.json",
+        "edit_kind": "DATA",
+        "change": "The description says 'calender'. It should say 'calendar'.",
+        "reason": "A spelling mistake."
+      }
+    },
+    {
+      "kind": "item",
+      "id": "PA-0004",
+      "state": "scored",
+      "lane": "normal",
+      "results": {
+        "assay": {"score": 90, "recommendation": "split"}
+      }
+    }
+  ],
+  "timeouts": 1
+}

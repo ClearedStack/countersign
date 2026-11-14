@@ -1,0 +1,14 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "EP-0003",
+    "kind": "proposal",
+    "state": "pending_approval",
+    "lane": "normal",
+    "target": "workers/sample-worker/rules",
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "ISSUE",
+    "change": "There is no rule for a sample page laid out as two columns."
+  }
+}

@@ -1,0 +1,655 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0050"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0051"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0052"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0053"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0054"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0055"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0050"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "EP-0051"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "2e672c62fe81aa004a8eb94cc909b341",
+        "worker": "countersign",
+        "item": "PA-0050",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.park",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "eb47e09629b57320b70d4e959183b02e",
+        "worker": "countersign",
+        "item": "PA-0051",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "park",
+        "from": "scored",
+        "to": "parked",
+        "lane": "normal",
+        "score": 60,
+        "recommendation": "parked",
+        "blocker": "Waiting for the made-up sample table."
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.reject",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "484d0a1ad585dc6fffe2a08e8b600285",
+        "worker": "countersign",
+        "item": "PA-0052",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "reject",
+        "from": "scored",
+        "to": "rejected",
+        "lane": "normal",
+        "score": 41,
+        "recommendation": "rejected",
+        "reason": "Scores 41: a rare edge case."
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.link",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "7b538f82b2fd9cd03fcb7a2fb170cd35",
+        "worker": "countersign",
+        "item": "PA-0053",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "link",
+        "from": "scored",
+        "to": "linked",
+        "lane": "normal",
+        "score": 88,
+        "recommendation": "linked",
+        "tool": "Sample Rate Checker (made-up existing tool)"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.merge",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "4024ec22ab5791bd1e92abc0fa85b404",
+        "worker": "countersign",
+        "item": "PA-0054",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "merge",
+        "from": "scored",
+        "to": "merged",
+        "lane": "normal",
+        "override": true,
+        "score": 82,
+        "recommendation": "approved",
+        "reason": "One more check inside the toolkit.",
+        "parent": "sample-rate-toolkit"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.override",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "09ea06b620f817aab9696e1f6123da51",
+        "worker": "countersign",
+        "item": "PA-0055",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.proposal_approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6080cf79d5287c44ec10e5a191dbd99d",
+        "worker": "countersign",
+        "item": "EP-0050",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    },
+    {
+      "do": "decide",
+      "rule": "decision.proposal_decline",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "936f3d12322e46ef57870ab9764dfe50",
+        "worker": "countersign",
+        "item": "EP-0051",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "decline",
+        "from": "pending_approval",
+        "to": "declined",
+        "lane": "normal",
+        "reason": "Three retries is deliberate."
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0050",
+          "seq": 1
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0051",
+          "seq": 2
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0052",
+          "seq": 3
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0053",
+          "seq": 4
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0054",
+          "seq": 5
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0055",
+          "seq": 6
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "EP-0050",
+          "seq": 7
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "EP-0051",
+          "seq": 8
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0050.1.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "2e672c62fe81aa004a8eb94cc909b341",
+        "worker": "countersign",
+        "item": "PA-0050",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "lease": "PA-0051.2.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "eb47e09629b57320b70d4e959183b02e",
+        "worker": "countersign",
+        "item": "PA-0051",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "park",
+        "from": "scored",
+        "to": "parked",
+        "lane": "normal",
+        "score": 60,
+        "recommendation": "parked",
+        "blocker": "Waiting for the made-up sample table."
+      }
+    },
+    {
+      "seq": 3,
+      "status": "acknowledged",
+      "lease": "PA-0052.3.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "484d0a1ad585dc6fffe2a08e8b600285",
+        "worker": "countersign",
+        "item": "PA-0052",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "reject",
+        "from": "scored",
+        "to": "rejected",
+        "lane": "normal",
+        "score": 41,
+        "recommendation": "rejected",
+        "reason": "Scores 41: a rare edge case."
+      }
+    },
+    {
+      "seq": 4,
+      "status": "acknowledged",
+      "lease": "PA-0053.4.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "7b538f82b2fd9cd03fcb7a2fb170cd35",
+        "worker": "countersign",
+        "item": "PA-0053",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "link",
+        "from": "scored",
+        "to": "linked",
+        "lane": "normal",
+        "score": 88,
+        "recommendation": "linked",
+        "tool": "Sample Rate Checker (made-up existing tool)"
+      }
+    },
+    {
+      "seq": 5,
+      "status": "acknowledged",
+      "lease": "PA-0054.5.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "4024ec22ab5791bd1e92abc0fa85b404",
+        "worker": "countersign",
+        "item": "PA-0054",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "merge",
+        "from": "scored",
+        "to": "merged",
+        "lane": "normal",
+        "override": true,
+        "score": 82,
+        "recommendation": "approved",
+        "reason": "One more check inside the toolkit.",
+        "parent": "sample-rate-toolkit"
+      }
+    },
+    {
+      "seq": 6,
+      "status": "acknowledged",
+      "lease": "PA-0055.6.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "09ea06b620f817aab9696e1f6123da51",
+        "worker": "countersign",
+        "item": "PA-0055",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "seq": 7,
+      "status": "acknowledged",
+      "lease": "EP-0050.7.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "6080cf79d5287c44ec10e5a191dbd99d",
+        "worker": "countersign",
+        "item": "EP-0050",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "approve",
+        "from": "pending_approval",
+        "to": "approved",
+        "lane": "urgent"
+      }
+    },
+    {
+      "seq": 8,
+      "status": "acknowledged",
+      "lease": "EP-0051.8.1",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "936f3d12322e46ef57870ab9764dfe50",
+        "worker": "countersign",
+        "item": "EP-0051",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "proposal",
+        "outcome": "decline",
+        "from": "pending_approval",
+        "to": "declined",
+        "lane": "normal",
+        "reason": "Three retries is deliberate."
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0050",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0051",
+        "state": "parked",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0052",
+        "state": "rejected",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0053",
+        "state": "linked",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0054",
+        "state": "merged",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0055",
+        "state": "observed",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "EP-0050",
+        "state": "approved",
+        "lane": "urgent",
+        "status": "closed"
+      },
+      {
+        "id": "EP-0051",
+        "state": "declined",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0050.1.1",
+        "id": "PA-0050",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "2e672c62fe81aa004a8eb94cc909b341",
+          "worker": "countersign",
+          "item": "PA-0050",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "PA-0051.2.1",
+        "id": "PA-0051",
+        "state": "parked",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "eb47e09629b57320b70d4e959183b02e",
+          "worker": "countersign",
+          "item": "PA-0051",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "park",
+          "from": "scored",
+          "to": "parked",
+          "lane": "normal",
+          "score": 60,
+          "recommendation": "parked",
+          "blocker": "Waiting for the made-up sample table."
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "PA-0052.3.1",
+        "id": "PA-0052",
+        "state": "rejected",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "484d0a1ad585dc6fffe2a08e8b600285",
+          "worker": "countersign",
+          "item": "PA-0052",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "reject",
+          "from": "scored",
+          "to": "rejected",
+          "lane": "normal",
+          "score": 41,
+          "recommendation": "rejected",
+          "reason": "Scores 41: a rare edge case."
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "PA-0053.4.1",
+        "id": "PA-0053",
+        "state": "linked",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "7b538f82b2fd9cd03fcb7a2fb170cd35",
+          "worker": "countersign",
+          "item": "PA-0053",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "link",
+          "from": "scored",
+          "to": "linked",
+          "lane": "normal",
+          "score": 88,
+          "recommendation": "linked",
+          "tool": "Sample Rate Checker (made-up existing tool)"
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "PA-0054.5.1",
+        "id": "PA-0054",
+        "state": "merged",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "4024ec22ab5791bd1e92abc0fa85b404",
+          "worker": "countersign",
+          "item": "PA-0054",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "merge",
+          "from": "scored",
+          "to": "merged",
+          "lane": "normal",
+          "override": true,
+          "score": 82,
+          "recommendation": "approved",
+          "reason": "One more check inside the toolkit.",
+          "parent": "sample-rate-toolkit"
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "PA-0055.6.1",
+        "id": "PA-0055",
+        "state": "observed",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "09ea06b620f817aab9696e1f6123da51",
+          "worker": "countersign",
+          "item": "PA-0055",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "override",
+          "from": "screened_out",
+          "to": "observed",
+          "lane": "normal",
+          "override": true,
+          "reason": "Reshaped to do one job."
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "EP-0050.7.1",
+        "id": "EP-0050",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "6080cf79d5287c44ec10e5a191dbd99d",
+          "worker": "countersign",
+          "item": "EP-0050",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "proposal",
+          "outcome": "approve",
+          "from": "pending_approval",
+          "to": "approved",
+          "lane": "urgent"
+        }
+      },
+      {
+        "call": "complete",
+        "lease": "EP-0051.8.1",
+        "id": "EP-0051",
+        "state": "declined",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "936f3d12322e46ef57870ab9764dfe50",
+          "worker": "countersign",
+          "item": "EP-0051",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "proposal",
+          "outcome": "decline",
+          "from": "pending_approval",
+          "to": "declined",
+          "lane": "normal",
+          "reason": "Three retries is deliberate."
+        }
+      }
+    ],
+    "dispatched": [
+      {
+        "item": "EP-0050",
+        "worker": "bellbuoy",
+        "lane": "urgent"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "rule": "intake.state_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.state_unfamiliar PA-0002: there is no rule for an item in this state [fp 4bb9185733eb8f28]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "6602f945a8868d84f2ff86c85d2643ac",
+    "worker": "countersign",
+    "item": "PA-0002",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.state_unfamiliar",
+    "fingerprint": "4bb9185733eb8f28"
+  }
+}

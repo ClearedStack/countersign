@@ -1,0 +1,21 @@
+{
+  "rule": "decision.park",
+  "record": {
+    "contract": "v1",
+    "call": "complete",
+    "id": "5c1ecb7fc764471cb2707c49d21024ee",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "kind": "item",
+    "outcome": "park",
+    "from": "scored",
+    "to": "parked",
+    "lane": "normal",
+    "override": true,
+    "score": 82,
+    "recommendation": "approved",
+    "reason": "Good idea, but two builds are already in progress.",
+    "blocker": "No capacity this quarter."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "rule": "intake.kind_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.kind_unfamiliar PA-0001: there is no rule for this kind of item [fp fe0ea4b25225cc5e]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "bfe78c9859a8221feb358c807e2d0da7",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.kind_unfamiliar",
+    "fingerprint": "fe0ea4b25225cc5e"
+  }
+}
