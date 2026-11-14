@@ -380,9 +380,10 @@ func (s *StandIn) Complete(ctx context.Context, lease string, state item.State, 
 		if !ok || to != state {
 			return ErrRefused // that move is not allowed
 		}
-		// An override needs a written reason.
+		// An override needs a written reason, and Logbook limits every
+		// decision reason to 2000 bytes.
 		override := it.State == item.ScreenedOut || (it.State == item.Scored && to != it.Recommendation)
-		if override != rec.Override || (override && strings.TrimSpace(rec.Reason) == "") {
+		if override != rec.Override || (override && strings.TrimSpace(rec.Reason) == "") || !item.ValidText(rec.Reason, item.MaxReason) {
 			return ErrRefused
 		}
 		lane := it.Lane

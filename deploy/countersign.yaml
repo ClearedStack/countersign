@@ -1,0 +1,121 @@
+# Countersign in the cs-workers namespace.
+#
+# The namespace cs-workers belongs to the platform and is created before
+# workers are rolled out. No Secret is needed or mounted: Countersign proves
+# who it is to Muster with its ServiceAccount token and holds no database
+# credentials.
+#
+# The image is pinned by digest in Lazarette. Before the first build is pushed
+# and signed by Keelworks, the zero digest acts as a placeholder that
+# Shipkeeper refuses to roll out until Keelworks writes the signed digest.
+#
+# priorityClassName is left unset until the platform creates the worker
+# PriorityClass in the cluster, because an unknown class name blocks pod
+# creation.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: countersign
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: countersign
+    app.kubernetes.io/part-of: clearedstack
+---
+# Unlike stateless pipeline stages, Countersign's spool holds human decisions
+# waiting for Muster's confirmation, so it lives on a small persistent volume
+# rather than an emptyDir that disappears with the pod.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: countersign-spool
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: countersign
+    app.kubernetes.io/part-of: clearedstack
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: countersign
+  namespace: cs-workers
+  labels:
+    app.kubernetes.io/name: countersign
+    app.kubernetes.io/part-of: clearedstack
+    app.kubernetes.io/version: v0.1.0-draft
+spec:
+  replicas: 1
+  # One lease loop and one ReadWriteOnce spool volume: stop the old pod before
+  # starting the new one.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: countersign
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: countersign
+        app.kubernetes.io/part-of: clearedstack
+    spec:
+      serviceAccountName: countersign
+      # Countersign sends this projected token to Muster as its Bearer
+      # credential; Muster checks it with TokenReview. Countersign never calls
+      # the Kubernetes API itself.
+      automountServiceAccountToken: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["arm64"]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["cm3588-plus"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: countersign
+          image: lazarette.clearedstack.svc.cluster.local:5000/countersign@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          imagePullPolicy: IfNotPresent
+          args: ["run"]
+          env:
+            - name: CONTRACT_VERSION
+              value: v1
+            - name: MUSTER_URL
+              value: http://muster.clearedstack.svc.cluster.local:8080
+            - name: COUNTERSIGN_SPOOL
+              value: /var/spool/cs
+            - name: GOMEMLIMIT
+              value: 20MiB
+          resources:
+            requests:
+              cpu: 10m
+              memory: 30Mi
+            limits:
+              memory: 30Mi
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: spool
+              mountPath: /var/spool/cs
+      volumes:
+        - name: spool
+          persistentVolumeClaim:
+            claimName: countersign-spool

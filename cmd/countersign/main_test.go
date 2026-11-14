@@ -275,3 +275,69 @@ func TestHeldAndRelease(t *testing.T) {
 		t.Errorf("log:\n%s", r.stdout)
 	}
 }
+
+func TestEnvironmentVariables(t *testing.T) {
+	spool := t.TempDir()
+	runEnv := func(vars map[string]string, args ...string) result {
+		t.Helper()
+		var out, errb bytes.Buffer
+		e := env{
+			stdin:  strings.NewReader(""),
+			stdout: &out,
+			stderr: &errb,
+			now:    func() time.Time { return at },
+			getenv: func(k string) string { return vars[k] },
+		}
+		return result{run(args, e), out.String(), errb.String()}
+	}
+
+	// COUNTERSIGN_SPOOL selects the spool when -spool is not given.
+	var out, errb bytes.Buffer
+	code := run([]string{"add"}, env{
+		stdin:  strings.NewReader(scoredItem),
+		stdout: &out,
+		stderr: &errb,
+		now:    func() time.Time { return at },
+		getenv: func(k string) string {
+			if k == "COUNTERSIGN_SPOOL" {
+				return spool
+			}
+			return ""
+		},
+	})
+	if code != exitOK {
+		t.Fatalf("add via COUNTERSIGN_SPOOL: %d %s", code, errb.String())
+	}
+	if r := runEnv(map[string]string{"COUNTERSIGN_SPOOL": spool}, "list"); r.code != exitOK || !strings.Contains(r.stdout, "PA-0001") {
+		t.Errorf("list via COUNTERSIGN_SPOOL: %+v", r)
+	}
+
+	// CONTRACT_VERSION other than v1 is refused without echoing its value.
+	r := runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": spool,
+		"MUSTER_URL":        "http://127.0.0.1:1",
+		"CONTRACT_VERSION":  "secret-v2",
+	}, "run", "-ticks", "1")
+	if r.code != exitUsage || strings.Contains(r.stderr, "secret-v2") {
+		t.Errorf("bad CONTRACT_VERSION: %+v", r)
+	}
+
+	// MUSTER_URL + CONTRACT_VERSION=v1 runs one tick (unreachable Muster is E_TIMEOUT, exit 0).
+	r = runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": spool,
+		"MUSTER_URL":        "http://127.0.0.1:1",
+		"CONTRACT_VERSION":  "v1",
+	}, "run", "-interval", "1ms", "-ticks", "1")
+	if r.code != exitOK || !strings.Contains(r.stderr, `"code":"E_TIMEOUT"`) {
+		t.Errorf("run via MUSTER_URL: %+v", r)
+	}
+
+	// Explicit -standin still works when MUSTER_URL is set in the environment.
+	r = runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": t.TempDir(),
+		"MUSTER_URL":        "http://127.0.0.1:1",
+	}, "run", "-standin", "../../examples/standin.json", "-interval", "1ms", "-ticks", "1")
+	if r.code != exitOK {
+		t.Errorf("run -standin with MUSTER_URL set: %+v", r)
+	}
+}

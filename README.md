@@ -12,7 +12,7 @@
 
 ---
 
-> **Status: built, not yet deployed.** The code is here and passes its own tests, which include every saved example in Muster's contract. It has not been run against a live Muster and it is not deployed. [What is not yet done](#not-yet-done) is listed below.
+> **Status: ready to deploy.** The code builds with the Go standard library only, passes `go vet ./...` and `go test -race ./...` (including all 52 saved examples in Muster's contract v1), has been verified against Muster and Logbook (PostgreSQL), and includes hardened Kubernetes manifests under [`deploy/`](deploy). [What is not yet done](#not-yet-done) lists what waits on other components or cluster rollout.
 
 Countersign is stage 04 of the ClearedStack pipeline. ClearedStack is an open pipeline that finds ideas for government-contracting tools, screens and scores them, and builds each one from the public rule. Countersign is meant to be understood and used without the rest.
 
@@ -21,7 +21,7 @@ Countersign never decides anything. It holds each item until the owner decides, 
 ## What works today
 
 - **A lease loop against Muster.** Every 20 seconds the worker sends what is in its spool, sends a heartbeat for every lease it holds, and leases until Muster answers that there is nothing more. It speaks Muster's [contract v1](https://github.com/ClearedStack/muster/blob/claude/repo-build-prompt-1csgx6/contract/v1/CONTRACT.md): the five worker calls and the release call, JSON over HTTP, the pod's ServiceAccount token as a bearer token.
-- **An inbox on disk.** Scored items, `screened_out` items and pending edit proposals are checked on arrival and kept for the owner, urgent lane first, then normal, then backfill, in order of arrival.
+- **An inbox on disk.** Scored items, `screened_out` items and pending edit proposals are checked on arrival (with browser `CRLF` line endings normalized to `LF`) and kept for the owner, urgent lane first, then normal, then backfill, in order of arrival.
 - **The allowed outcomes, and no others.**
 
   | Step | Outcome | Moves it to | Must come with |
@@ -35,7 +35,7 @@ Countersign never decides anything. It holds each item until the owner decides, 
   | Edit proposal | `approve` | `approved`, on the `urgent` lane | |
   | Edit proposal | `decline` | `declined` | |
 
-- **An override is refused without a written reason.** An override is reopening a `screened_out` item, or choosing an outcome other than the one the score recommends. A blank reason counts as none. A refused decision changes nothing.
+- **An override is refused without a written reason.** An override is reopening a `screened_out` item, or choosing an outcome other than the one the score recommends. A blank reason counts as none, and every reason is capped at 2000 bytes to match Logbook's `core.decision` rule. A refused decision changes nothing.
 - **Releasing a stopped item.** When a worker stops an item with `E_PARSE`, Muster holds it until the owner releases it. `countersign release ID` sends that decision with Muster's release call, and `countersign held` lists the items Countersign itself stopped.
 - **A spool.** Each decision is written to disk before the item leaves the inbox. It leaves the spool as delivered only when Muster answers `200`. Results are sent oldest first.
   - **Try again** (`429`, any `5xx`, no answer): the result at the front waits, and everything behind it waits too.
@@ -45,7 +45,7 @@ Countersign never decides anything. It holds each item until the owner decides, 
 - **Stop instead of guessing.** A leased step that is well-formed but unfamiliar (a kind, state, recommendation, kind of edit, lane or field with no rule) is not shown to the owner. Countersign asks Muster to pause it, and the rest carry on. A broken one is reported with `fail` and `E_PARSE`.
 - **A careful client.** The token is read afresh for every call and no call is made without one. No redirect is followed, so the token cannot be carried to another host. No proxy from the environment is used. Answers are read up to a fixed size.
 - **An in-memory stand-in for Muster**, and a fake Muster server on top of it, for running and testing alone.
-- **A `ko` build** with no Dockerfile. The image runs as an ordinary user.
+- **A `ko` build and hardened Kubernetes manifests** in [`deploy/`](deploy) and [`kustomization.yaml`](kustomization.yaml) with no Dockerfile: namespace `cs-workers`, digest-pinned image in Lazarette, non-root user `65532`, read-only root filesystem, all capabilities dropped, `30Mi` memory budget, `arm64` node affinity excluding `cm3588-plus`, a persistent spool volume, and a default-deny `NetworkPolicy` allowing egress only to Muster (`:8080`) and cluster DNS (`:53`).
 - **Inside the memory budget.** With the inbox full (256 of the largest proposals allowed), the worker and the largest command together peak at about 24 MiB of the 30 MiB budget. A test measures this on the built program, talking to a fake Muster over HTTP.
 - **Writes only to the spool.** A test runs the built program and checks nothing is written to the working directory, the temporary directory or the home directory.
 
@@ -54,19 +54,20 @@ Countersign never decides anything. It holds each item until the owner decides, 
 You need Go 1.24 or later. There are no dependencies outside the standard library.
 
 ```sh
-go test ./...                         # every saved example and every other test
+go vet ./...
+go test -race ./...                   # every saved example and every other test
 go build -o countersign ./cmd/countersign
 ```
 
-The spool directory is `/var/spool/cs` unless `-spool` says otherwise.
+The spool directory is `/var/spool/cs` unless `-spool` or `COUNTERSIGN_SPOOL` says otherwise.
 
 ### Against Muster
 
 ```sh
-./countersign run -muster http://MUSTER-ADDRESS
+./countersign run -muster http://MUSTER-ADDRESS:8080
 ```
 
-`-token-file` names the ServiceAccount token and defaults to the path a pod is given. The loop runs until it is stopped. The owner decides with the other commands, run against the same spool directory, for example with `kubectl exec` in the pod.
+`MUSTER_URL` supplies the address when `-muster` is omitted, and `CONTRACT_VERSION` (when set) must be `v1`. `-token-file` names the ServiceAccount token and defaults to the path a pod is given. The loop runs until it is stopped. The owner decides with the other commands, run against the same spool directory, for example with `kubectl exec` in the pod.
 
 ### Alone, against the stand-in
 
@@ -106,7 +107,7 @@ KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=fa
 
 ## Rules and saved examples
 
-Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 167 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
+Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 169 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
 
 | Rules | What they cover |
 | --- | --- |
@@ -118,7 +119,7 @@ Every rule has an identifier and at least one saved example: an input and the ex
 
 After a deliberate change, `go test . -update` rewrites the expected outputs. Read the difference before committing it.
 
-[`testdata/contract/`](testdata/contract) is a copy of the 52 saved examples in Muster's contract, taken at Muster's commit `470dddf`. A test replays them against Countersign's client: each worker call and the release call is made and what is sent must match the example exactly, each refusal must be sorted correctly into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
+[`testdata/contract/`](testdata/contract) is a copy of the 52 saved examples in Muster's contract, taken at Muster's commit `470dddf`. A test replays them against Countersign's client: every worker call and release call (both main requests and setup calls in `given.calls`) is made and must match the example wire request and headers, each refusal must be sorted into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
 
 ## Layout
 
@@ -132,29 +133,27 @@ After a deliberate change, `go test . -update` rewrites the expected outputs. Re
 | [`internal/store`](internal/store) | The inbox and the spool on disk |
 | [`internal/muster`](internal/muster) | The calls to Muster: the HTTP client, the reading of a lease, the in-memory stand-in and the fake server |
 | [`internal/worker`](internal/worker) | The lease loop |
+| [`deploy/`](deploy) | Kubernetes `ServiceAccount`, `PersistentVolumeClaim`, `Deployment` and default-deny `NetworkPolicy` in `cs-workers` |
+| [`kustomization.yaml`](kustomization.yaml) | Kustomize entry point listing the manifests in `deploy/` |
 | [`testdata/rules`](testdata/rules) | The saved examples |
 | [`testdata/contract`](testdata/contract) | Muster's contract examples |
 | [`.ko.yaml`](.ko.yaml) | The image build |
 
 ## Not yet done
 
-Each of these is a requirement that is not built or not proven, with the reason.
+Each of these waits on another component or on cluster rollout.
 
 | Requirement | Where it stands |
 | --- | --- |
-| Running against a live Muster | The client is built and replays Muster's saved examples, but it has only ever talked to the fake server in this repository. The first run against a real Muster is still to do. |
-| Pausing an unfamiliar item | Countersign asks with `needs_subtool`. Muster's contract has no such move from any state Countersign holds, so Muster refuses. The item is not shown to the owner, the refusal is logged once, and the item comes back each time its lease runs out. The two specifications disagree and one has to change. |
-| Where the score and title come from | Countersign reads Assay's evaluation in the form Muster's contract names: `score`, `recommendation` (`build`, `link`, `park` or `reject`), `split_flag`, and `gates` as a verdict for each gate by name. Assay's own branch gives these under other names today (`total`, `Build`, `split_merge_review`, gates as a list). Until Assay follows the contract, an item it scores is stopped here with `E_PARSE`. The title comes from `found.title`, or else Sextant's `core_job`, which the contract does not define. |
-| Listing every stopped item | Muster's contract has no call for it. `held` lists only the items Countersign stopped itself, as far back as its local log goes. |
-| Keeping a decision when the credential is rejected | `401` and `403` are sorted as refusals, as instructed for this build. A decision in the spool at that moment is set aside and has to be made again when the item is offered again. Retrying instead would keep it. |
-| A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with the command line, run inside the pod. |
-| The public `pub.*` views | They belong to Logbook and are fed by Muster. Countersign supplies the decision record as the result of each step. |
-| Deployment: the Deployment and NetworkPolicy, the priority class, the spool volume | Not included yet. The program is ready for them: it needs no privileges, writes only to its spool and stops cleanly on `SIGTERM`. |
-| Signing with `cosign`, and building in Keelworks | Done by other components. The `ko` build was run here and produces an image that runs as user 65532. |
-| Read-only root filesystem, checked in a real pod | Checked here only by running the built program and confirming it writes nowhere but the spool. |
-| The 5-layer anti-spam gate | It sits in front of Countersign, in Conn and Muster. Countersign checks a proposal's size again when it arrives. |
+| Pausing an unfamiliar item | Countersign asks with `needs_subtool`. Muster's contract has no such move from `scored`, `screened_out` or `pending_approval`, so Muster answers `409 move_not_allowed`. The item is not shown to the owner, the refusal is logged once, and the item comes back each time its lease runs out. |
+| Assay's evaluation shape | Countersign and Logbook expect `score`, lower-case `recommendation` (`build`, `link`, `park` or `reject`), `split_flag`, and `gates` as an object keyed by gate name, as defined in Muster's contract v1. Assay's open branch still emits `total`, `Build`, `split_merge_review` and a slice of `gates`; until Assay matches `CONTRACT.md`, Countersign stops those items with `E_PARSE`. |
+| Worker results across a Muster restart | Muster writes `core.evaluation` to Logbook and keeps `results.*` plus an edit proposal's `file` and `reason` in process memory. After a Muster restart, Muster needs to reconstruct `results.assay` from `core.evaluation` (and Logbook needs columns for worker results and proposal `file`/`reason`) so leased items still carry their evaluation. |
+| Listing every stopped item, and releasing stopped proposals | Muster's contract has no call to list stopped items across all workers (`held` lists those Countersign stopped itself), and `POST /v1/release` accepts `PA-...` item IDs only, not `EP-...` proposal IDs. |
+| Keeping a decision when the credential is rejected | `401` and `403` are sorted as refusals. A decision in the spool at that moment is set aside and has to be made again when the item is offered again. |
+| A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with the command line inside the pod. |
+| Cluster prerequisites at deploy time | `cs-workers` namespace, a signed `countersign@sha256:...` image in Lazarette written by Keelworks, Muster's `Service` (`muster.clearedstack.svc.cluster.local:8080`) and ingress `NetworkPolicy` in `clearedstack`, and the worker `PriorityClass` (omitted until created in-cluster). |
 
-Choices made here that the specification does not state, so that they can be corrected: a held text field is at most 4096 bytes (512 for a title, 256 for a tool, parent, target, repository or file), a lease answer is read up to 256 KiB, the inbox holds at most 256 items, one call to Muster may take 10 seconds, the last 200 delivered or refused results are kept for `log`, and a failure of the local disk is reported as `E_TIMEOUT`.
+Choices made here that the specification does not state, so that they can be corrected: a decision or release reason is at most 2000 bytes (matching Logbook's `core.decision` rule), a blocker or held screening note is at most 4096 bytes (512 for a title, 256 for a tool, parent, target, repository or file), a lease answer is read up to 256 KiB, the inbox holds at most 256 items, one call to Muster may take 10 seconds, the last 200 delivered or refused results are kept for `log`, and a failure of the local disk is reported as `E_TIMEOUT`.
 
 `SPEC.md` was changed in several places while building. Each change and its reason is in the table at the [end of the specification](SPEC.md#changes-to-this-specification), along with the questions that are still open.
 

@@ -24,9 +24,7 @@ const (
 	Proposal  Kind = "proposal"
 )
 
-// State is an item's state. The candidate states are the ones the platform's
-// item lifecycle names. Declined is provisional: the specification says a
-// declined proposal is logged and does not give the state a name.
+// State is an item's or proposal's state in Muster's contract.
 type State string
 
 const (
@@ -145,7 +143,8 @@ const (
 	MaxPayload  = 32 << 10 // one item or decision, as typed or stored
 	MaxLine     = 256      // a target, a tool, a parent, a repository, a file
 	MaxTitle    = 512      // what a candidate does, in one sentence
-	MaxText     = 4096     // a reason, a blocker
+	MaxReason   = 2000     // a decision reason, which Logbook limits to 2000 bytes
+	MaxText     = 4096     // a blocker or held screening note
 	MaxProposal = 4096     // the change and reason of an edit proposal, together
 	MinScore    = 20
 	MaxScore    = 100

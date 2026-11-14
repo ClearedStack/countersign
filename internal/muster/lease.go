@@ -196,7 +196,7 @@ func (l Lease) Item() (item.Item, *rule.Error) {
 			var failed []string
 			for name, g := range a.Gates {
 				if g.Passed != nil && !*g.Passed {
-					failed = append(failed, name+": "+strings.TrimSpace(g.Reason))
+					failed = append(failed, name+": "+strings.TrimSpace(cleanLines(g.Reason)))
 				}
 			}
 			sort.Strings(failed)
@@ -211,10 +211,17 @@ func (l Lease) Item() (item.Item, *rule.Error) {
 		}
 		p := l.Proposal
 		it.Target, it.Repository, it.File = p.Target, p.Repository, p.File
-		it.EditKind, it.Change, it.Reason = p.EditKind, p.Change, p.Reason
+		it.EditKind, it.Change, it.Reason = p.EditKind, cleanLines(p.Change), cleanLines(p.Reason)
 	}
 	if perr := item.Check(it); perr != nil {
 		return item.Item{}, perr
 	}
 	return it, nil
+}
+
+// cleanLines turns CRLF and lone CR line breaks into LF. Browser forms send
+// CRLF, Muster's intake preserves it, and Logbook's text check allows CR.
+func cleanLines(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	return strings.ReplaceAll(s, "\r", "\n")
 }

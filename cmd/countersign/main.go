@@ -66,8 +66,9 @@ usage: countersign [-spool DIR] COMMAND
                         flag: -reason (kept in the local log only)
   held                  list the items Countersign itself stopped with E_PARSE
   log                   list recent records and whether Muster has confirmed them
-  run -muster URL       run the lease loop against Muster; -token-file names the
-                        ServiceAccount token, read afresh for every call
+  run -muster URL       run the lease loop against Muster (or set MUSTER_URL);
+                        -token-file names the ServiceAccount token, read afresh
+                        for every call; CONTRACT_VERSION, if set, must be v1
   run -standin FILE     run the lease loop against the in-memory Muster stand-in
   rules                 list every rule and its public error code
   version               print the version
@@ -82,6 +83,14 @@ type env struct {
 	stdout io.Writer
 	stderr io.Writer
 	now    func() time.Time
+	getenv func(string) string
+}
+
+func (e env) envVar(name string) string {
+	if e.getenv == nil {
+		return ""
+	}
+	return e.getenv(name)
 }
 
 func main() {
@@ -93,6 +102,7 @@ func main() {
 		stdout: os.Stdout,
 		stderr: os.Stderr,
 		now:    func() time.Time { return time.Now().UTC().Truncate(time.Second) },
+		getenv: os.Getenv,
 	}
 	os.Exit(run(os.Args[1:], e))
 }
@@ -100,7 +110,11 @@ func main() {
 func run(args []string, e env) int {
 	global := flag.NewFlagSet("countersign", flag.ContinueOnError)
 	global.SetOutput(io.Discard)
-	spool := global.String("spool", DefaultSpool, "")
+	defaultSpool := DefaultSpool
+	if v := e.envVar("COUNTERSIGN_SPOOL"); v != "" {
+		defaultSpool = v
+	}
+	spool := global.String("spool", defaultSpool, "")
 	if err := global.Parse(args); err != nil {
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -421,6 +435,9 @@ func cmdRun(e env, st *store.Store, args []string) int {
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 || *interval <= 0 || *ticks < 0 {
 		return usageError(e, "run: see countersign help")
 	}
+	if *address == "" && *standin == "" {
+		*address = e.envVar("MUSTER_URL")
+	}
 	if (*address == "") == (*standin == "") {
 		return usageError(e, "run needs exactly one of -muster URL and -standin FILE")
 	}
@@ -428,6 +445,9 @@ func cmdRun(e env, st *store.Store, args []string) int {
 	var queue muster.Queue
 	var snapshot func() muster.Snapshot
 	if *address != "" {
+		if v := e.envVar("CONTRACT_VERSION"); v != "" && v != record.ContractVersion {
+			return usageError(e, "CONTRACT_VERSION must be v1")
+		}
 		client, err := muster.NewHTTP(*address, *tokenFile)
 		if err != nil {
 			return usageError(e, "the address given to -muster must be a plain http or https URL")

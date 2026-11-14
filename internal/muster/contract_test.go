@@ -20,16 +20,22 @@ import (
 
 const contractDir = "../../testdata/contract"
 
+// exampleCall is one HTTP call in a saved contract example.
+type exampleCall struct {
+	As     string          `json:"as"`
+	Method string          `json:"method"`
+	Path   string          `json:"path"`
+	Body   json.RawMessage `json:"body"`
+}
+
 // example is one of Muster's saved contract examples.
 type example struct {
-	About   string `json:"about"`
-	Request struct {
-		As     string          `json:"as"`
-		Method string          `json:"method"`
-		Path   string          `json:"path"`
-		Body   json.RawMessage `json:"body"`
-	} `json:"request"`
-	Expect struct {
+	About string `json:"about"`
+	Given struct {
+		Calls []exampleCall `json:"calls"`
+	} `json:"given"`
+	Request exampleCall `json:"request"`
+	Expect  struct {
 		Status int             `json:"status"`
 		Body   json.RawMessage `json:"body"`
 	} `json:"expect"`
@@ -47,7 +53,8 @@ var leaseRules = map[string]rule.ID{
 	"lease-proposal.json":         rule.IntakeAccept,
 }
 
-// notWorkerCalls counts the examples for calls Countersign never makes.
+// notWorkerCalls counts the examples whose main request is a call Countersign
+// never makes (/v1/edits, /v1/items, /v1/health, /v1/feed, /healthz).
 const notWorkerCalls = 10
 
 func compact(t *testing.T, raw []byte) string {
@@ -59,28 +66,34 @@ func compact(t *testing.T, raw []byte) string {
 	return buf.String()
 }
 
-// serve answers every request with the example's status and body, and keeps
-// the last request body it was sent.
-func serve(t *testing.T, ex example) (*httptest.Server, *string) {
+// serve answers every request with status and respBody, checks the worker's
+// headers, and keeps the last request line and body it was sent.
+func serve(t *testing.T, status int, respBody json.RawMessage) (*httptest.Server, *string) {
 	t.Helper()
 	var last string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer "+madeUpToken {
+			t.Errorf("Authorization = %q, want Bearer token", got)
+		}
+		if got := r.Header.Get("Content-Type"); got != "application/json" {
+			t.Errorf("Content-Type = %q, want application/json", got)
+		}
 		b, _ := io.ReadAll(r.Body)
 		last = r.Method + " " + r.URL.Path + " " + string(b)
-		if len(ex.Expect.Body) > 0 {
+		if len(respBody) > 0 {
 			w.Header().Set("Content-Type", "application/json")
 		}
-		w.WriteHeader(ex.Expect.Status)
-		w.Write(ex.Expect.Body)
+		w.WriteHeader(status)
+		w.Write(respBody)
 	}))
 	t.Cleanup(srv.Close)
 	return srv, &last
 }
 
-// sendable makes the call an example's request describes, if it is one the
-// client can make at all. A request with an unknown field, a missing field
-// or a body that is not JSON is one the client cannot produce.
-func sendable(h *HTTP, ex example) (call func(context.Context) ([]byte, error), ok bool) {
+// sendable makes the call a request describes, if it is one the client can
+// make at all. A request with an unknown field, a missing field or a body
+// that is not JSON is one the client cannot produce.
+func sendable(h *HTTP, req exampleCall) (call func(context.Context) ([]byte, error), ok bool) {
 	var body struct {
 		Contract *string         `json:"contract"`
 		ID       *string         `json:"id"`
@@ -89,9 +102,9 @@ func sendable(h *HTTP, ex example) (call func(context.Context) ([]byte, error), 
 		Result   json.RawMessage `json:"result"`
 		Code     *string         `json:"code"`
 	}
-	dec := json.NewDecoder(bytes.NewReader(ex.Request.Body))
+	dec := json.NewDecoder(bytes.NewReader(req.Body))
 	dec.DisallowUnknownFields()
-	if ex.Request.Method != "POST" || dec.Decode(&body) != nil || body.Contract == nil || *body.Contract != ContractVersion {
+	if req.Method != "POST" || dec.Decode(&body) != nil || body.Contract == nil || *body.Contract != ContractVersion {
 		return nil, false
 	}
 	none := func(fn func(context.Context) error) func(context.Context) ([]byte, error) {
@@ -101,7 +114,7 @@ func sendable(h *HTTP, ex example) (call func(context.Context) ([]byte, error), 
 		return body.ID == nil && (body.Lease != nil) == lease && (body.State != nil) == state &&
 			(body.Result != nil || !result) && (body.Result == nil || result) && (body.Code != nil) == code
 	}
-	switch ex.Request.Path {
+	switch req.Path {
 	case "/v1/lease":
 		if has(false, false, false, false) {
 			return h.Lease, true
@@ -138,10 +151,17 @@ func TestContractExamples(t *testing.T) {
 		t.Fatalf("no contract examples: %v", err)
 	}
 	sort.Strings(names)
-	workerPaths := map[string]bool{"/v1/lease": true, "/v1/heartbeat": true, "/v1/complete": true, "/v1/fail": true, "/v1/needs_subtool": true, "/v1/release": true}
+	workerPaths := map[string]bool{
+		"/v1/lease": true, "/v1/heartbeat": true, "/v1/complete": true,
+		"/v1/fail": true, "/v1/needs_subtool": true, "/v1/release": true,
+	}
+	otherPaths := map[string]bool{
+		"/v1/edits": true, "/v1/items": true, "/v1/health": true,
+		"/v1/feed": true, "/healthz": true,
+	}
 	tokenPath := tokenFile(t, madeUpToken)
 	ctx := context.Background()
-	skipped, sent, leased := 0, 0, map[string]bool{}
+	skipped, sent, givenSent, leased := 0, 0, 0, map[string]bool{}
 
 	for _, name := range names {
 		file := filepath.Base(name)
@@ -157,13 +177,45 @@ func TestContractExamples(t *testing.T) {
 		if isRefusal != (ex.Expect.Status >= 400) {
 			t.Errorf("%s: named as a refusal or not, but answers %d", file, ex.Expect.Status)
 		}
-		if !workerPaths[ex.Request.Path] && !isRefusal {
-			skipped++
-			continue
-		}
 
 		t.Run(file, func(t *testing.T) {
-			srv, last := serve(t, ex)
+			// Replay every worker call in given.calls first, including those
+			// in examples whose final request is for another endpoint.
+			for i, gc := range ex.Given.Calls {
+				if !workerPaths[gc.Path] {
+					if !otherPaths[gc.Path] {
+						t.Errorf("given.calls[%d]: unknown path %s", i, gc.Path)
+					}
+					continue
+				}
+				status, resp := 200, json.RawMessage(`{"ok":true}`)
+				if gc.Path == "/v1/lease" {
+					status, resp = 204, nil
+				}
+				gSrv, gLast := serve(t, status, resp)
+				gClient := client(t, gSrv.URL, tokenPath)
+				gCall, ok := sendable(gClient, gc)
+				if !ok {
+					t.Fatalf("given.calls[%d] (%s %s) could not be sent by the client", i, gc.Method, gc.Path)
+				}
+				givenSent++
+				if _, err := gCall(ctx); err != nil {
+					t.Errorf("given.calls[%d]: %v", i, err)
+				}
+				if got, wantSent := *gLast, "POST "+gc.Path+" "+compact(t, gc.Body); got != wantSent {
+					t.Errorf("given.calls[%d] sent\n  %s\nwant\n  %s", i, got, wantSent)
+				}
+			}
+
+			if !workerPaths[ex.Request.Path] && !isRefusal {
+				if !otherPaths[ex.Request.Path] {
+					t.Errorf("unknown non-worker path %s", ex.Request.Path)
+				}
+				skipped++
+				return
+			}
+
+			srv, last := serve(t, ex.Expect.Status, ex.Expect.Body)
 			h := client(t, srv.URL, tokenPath)
 
 			// What the answer means to the client, whatever call it is on.
@@ -209,7 +261,7 @@ func TestContractExamples(t *testing.T) {
 				}
 			}
 
-			call, ok := sendable(h, ex)
+			call, ok := sendable(h, ex.Request)
 			if !ok {
 				return
 			}
@@ -264,5 +316,8 @@ func TestContractExamples(t *testing.T) {
 	if skipped != notWorkerCalls {
 		t.Errorf("%d examples are for calls Countersign does not make, expected %d: look at what changed", skipped, notWorkerCalls)
 	}
-	t.Logf("%d examples: %d replayed as calls the client makes, %d not a worker's call", len(names), sent, skipped)
+	if givenSent == 0 {
+		t.Error("no worker calls in given.calls were replayed")
+	}
+	t.Logf("%d examples: %d main calls and %d setup calls replayed, %d non-worker calls", len(names), sent, givenSent, skipped)
 }

@@ -83,7 +83,7 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 	if !ok {
 		return fail(rule.DecisionOutcomeNotAllowed)
 	}
-	if !item.ValidText(d.Reason, item.MaxText) || !item.ValidText(d.Blocker, item.MaxText) ||
+	if !item.ValidText(d.Reason, item.MaxReason) || !item.ValidText(d.Blocker, item.MaxText) ||
 		!item.ValidLine(d.Tool, item.MaxLine) || !item.ValidLine(d.Parent, item.MaxLine) {
 		return fail(rule.DecisionTextInvalid)
 	}
@@ -149,7 +149,7 @@ func Release(id, reason string, at time.Time) (Result, *rule.Error) {
 	if !item.ValidID(item.Candidate, id) {
 		return Result{}, rule.Fail(rule.DecisionMalformed, id)
 	}
-	if !item.ValidText(reason, item.MaxText) {
+	if !item.ValidText(reason, item.MaxReason) {
 		return Result{}, rule.Fail(rule.DecisionTextInvalid, id)
 	}
 	rec := record.Record{

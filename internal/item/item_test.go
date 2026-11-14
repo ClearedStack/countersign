@@ -69,6 +69,9 @@ func TestText(t *testing.T) {
 	if ValidText("abcd", 3) || !ValidText("abc", 3) {
 		t.Error("length limit is in bytes, inclusive")
 	}
+	if MaxReason != 2000 {
+		t.Errorf("MaxReason = %d, want 2000 to match Logbook", MaxReason)
+	}
 	if !Blank(" \n\t ") || Blank(" x ") {
 		t.Error("Blank")
 	}
