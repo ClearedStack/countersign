@@ -341,3 +341,137 @@ func TestEnvironmentVariables(t *testing.T) {
 		t.Errorf("run -standin with MUSTER_URL set: %+v", r)
 	}
 }
+
+func TestReviewInteractiveWorkflow(t *testing.T) {
+	spool := t.TempDir()
+	if r := cs(t, spool, "", "review"); r.code != exitOK || r.stdout != "no items waiting.\n" {
+		t.Fatalf("empty review: %+v", r)
+	}
+
+	for _, it := range []string{scoredItem, screenedItem, proposalItem} {
+		if r := cs(t, spool, it, "add"); r.code != exitOK {
+			t.Fatalf("add: %+v", r)
+		}
+	}
+
+	// Step through EP-0001 (approve), PA-0001 (bad outcome, disallowed outcome,
+	// override missing reason, then valid park override), and PA-0002 (blank -> skip).
+	session := strings.Join([]string{
+		"approve",
+		"",
+		"maybe",
+		"override",
+		"park",
+		"Waiting on FAR update",
+		"   ",
+		"park",
+		"Waiting on FAR update",
+		"Hold until Q3 rule text lands.",
+		"",
+	}, "\n") + "\n"
+
+	r := cs(t, spool, session, "review")
+	if r.code != exitOK {
+		t.Fatalf("review failed: %+v", r)
+	}
+	for _, wantOut := range []string{
+		"[1/3] EP-0001  proposal  pending_approval  lane=urgent",
+		"recorded EP-0001: pending_approval -> approved (decision.proposal_approve)",
+		"[2/3] PA-0001  item  scored  lane=normal",
+		"recorded PA-0001: scored -> parked (decision.park) [override]",
+		"[3/3] PA-0002  item  screened_out  lane=normal",
+		"skipped PA-0002.",
+	} {
+		if !strings.Contains(r.stdout, wantOut) {
+			t.Errorf("review stdout missing %q:\n%s", wantOut, r.stdout)
+		}
+	}
+	for _, wantErr := range []string{
+		"E_PARSE decision.outcome_unknown PA-0001:",
+		"E_PARSE decision.outcome_not_allowed PA-0001:",
+		"E_PARSE decision.override_reason_missing PA-0001:",
+	} {
+		if !strings.Contains(r.stderr, wantErr) {
+			t.Errorf("review stderr missing %q:\n%s", wantErr, r.stderr)
+		}
+	}
+
+	// PA-0002 was skipped and must still be waiting; EOF mid-prompt must not record it.
+	r = cs(t, spool, "override\n", "review", "PA-0002")
+	if r.code != exitOK {
+		t.Fatalf("review EOF mid-item: %+v", r)
+	}
+	if r = cs(t, spool, "", "show", "PA-0002"); r.code != exitOK {
+		t.Fatalf("PA-0002 disappeared on EOF: %+v", r)
+	}
+
+	// CRLF line endings work cleanly when reviewing by explicit ID.
+	r = cs(t, spool, "override\r\nReshaped to do one job.\r\n", "review", "PA-0002")
+	if r.code != exitOK || !strings.Contains(r.stdout, "recorded PA-0002: screened_out -> observed (decision.override) [override]") {
+		t.Fatalf("review CRLF override: %+v", r)
+	}
+	if r = cs(t, spool, "", "review"); r.code != exitOK || r.stdout != "no items waiting.\n" {
+		t.Errorf("inbox should now be empty: %+v", r)
+	}
+}
+
+func TestReviewFiltersOutcomesAndBounds(t *testing.T) {
+	spool := t.TempDir()
+	items := []string{
+		`{"id":"PA-0010","kind":"item","state":"scored","lane":"urgent","title":"Link sample","score":65,"recommendation":"linked","split_flag":true}`,
+		`{"id":"PA-0011","kind":"item","state":"scored","lane":"normal","title":"Merge sample","score":70,"recommendation":"approved"}`,
+		`{"id":"PA-0012","kind":"item","state":"scored","lane":"backfill","title":"Reject sample","score":30,"recommendation":"rejected"}`,
+		proposalItem,
+	}
+	for _, it := range items {
+		if r := cs(t, spool, it, "add"); r.code != exitOK {
+			t.Fatalf("add: %+v", r)
+		}
+	}
+
+	// Usage and unknown-item checks.
+	for _, bad := range [][]string{
+		{"review", "-bogus"},
+		{"review", "-kind", "bundle"},
+		{"review", "-lane", "fast"},
+		{"review", "-kind", "item", "PA-0010"},
+	} {
+		if r := cs(t, spool, "", bad...); r.code != exitUsage {
+			t.Errorf("%v: want exitUsage, got %+v", bad, r)
+		}
+	}
+	if r := cs(t, spool, "", "review", "PA-9999"); r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE decision.item_unknown PA-9999:") {
+		t.Errorf("unknown id: %+v", r)
+	}
+
+	// Filter to urgent candidates only: sees PA-0010 (with split_flag), links it.
+	r := cs(t, spool, "link\nsample-existing-tool\n\n", "review", "-kind", "item", "-lane", "urgent")
+	if r.code != exitOK ||
+		!strings.Contains(r.stdout, "split_flag: true") ||
+		!strings.Contains(r.stdout, "recorded PA-0010: scored -> linked (decision.link)") {
+		t.Fatalf("urgent item review: %+v", r)
+	}
+
+	// Overlong input lines are bounded, refused with E_PARSE, and allow quit.
+	huge := strings.Repeat("a", 40<<10)
+	r = cs(t, spool, huge+"\nmerge\n"+huge+"\nreason\nquit\n", "review", "-kind", "item")
+	if r.code != exitOK ||
+		!strings.Contains(r.stderr, "E_PARSE decision.outcome_unknown PA-0011:") ||
+		!strings.Contains(r.stderr, "E_PARSE decision.text_invalid PA-0011:") {
+		t.Fatalf("overlong input handling: %+v", r)
+	}
+
+	// Complete PA-0011 (merge) and PA-0012 (reject) in one pass.
+	r = cs(t, spool, "merge\nsample-parent\nFold into parent calculator.\nreject\nLow score and duplicate scope.\n", "review", "-kind", "item")
+	if r.code != exitOK ||
+		!strings.Contains(r.stdout, "recorded PA-0011: scored -> merged (decision.merge) [override]") ||
+		!strings.Contains(r.stdout, "recorded PA-0012: scored -> rejected (decision.reject)") {
+		t.Fatalf("merge and reject review: %+v", r)
+	}
+
+	// Proposal EP-0001 was untouched by -kind item; decline it via -kind proposal.
+	r = cs(t, spool, "decline\n\n", "review", "-kind", "proposal")
+	if r.code != exitOK || !strings.Contains(r.stdout, "recorded EP-0001: pending_approval -> declined (decision.proposal_decline)") {
+		t.Fatalf("proposal decline review: %+v", r)
+	}
+}

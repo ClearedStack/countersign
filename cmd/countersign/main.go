@@ -4,6 +4,7 @@
 //	countersign [-spool DIR] add [FILE]
 //	countersign [-spool DIR] list
 //	countersign [-spool DIR] show ID
+//	countersign [-spool DIR] review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]
 //	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT]
 //	countersign [-spool DIR] decide -f FILE
 //	countersign [-spool DIR] release ID [-reason TEXT]
@@ -60,6 +61,7 @@ usage: countersign [-spool DIR] COMMAND
   add [FILE]            check in one item (JSON) from FILE or standard input
   list                  list the items waiting for a decision
   show ID               show one waiting item and the outcomes allowed for it
+  review [ID...]        step through waiting items interactively; flags: -kind -lane
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
   decide -f FILE        record a decision given as JSON ("-" is standard input)
   release ID            let an item run again that a worker stopped with E_PARSE;
@@ -135,7 +137,7 @@ func run(args []string, e env) int {
 	case "help":
 		fmt.Fprint(e.stdout, usage)
 		return exitOK
-	case "add", "list", "show", "decide", "release", "held", "log", "run":
+	case "add", "list", "show", "review", "decide", "release", "held", "log", "run":
 	default:
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -152,6 +154,8 @@ func run(args []string, e env) int {
 		return cmdList(e, st)
 	case "show":
 		return cmdShow(e, st, rest)
+	case "review":
+		return cmdReview(e, st, rest)
 	case "decide":
 		return cmdDecide(e, st, rest)
 	case "release":

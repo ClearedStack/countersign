@@ -20,7 +20,7 @@ Countersign never decides anything. It holds each item until the owner decides, 
 
 ## What works today
 
-- **A lease loop against Muster.** Every 20 seconds the worker sends what is in its spool, sends a heartbeat for every lease it holds, and leases until Muster answers that there is nothing more. It speaks Muster's [contract v1](https://github.com/ClearedStack/muster/blob/claude/repo-build-prompt-1csgx6/contract/v1/CONTRACT.md): the five worker calls and the release call, JSON over HTTP, the pod's ServiceAccount token as a bearer token.
+- **A lease loop against Muster.** Every 20 seconds the worker sends what is in its spool, sends a heartbeat for every lease it holds, and leases until Muster answers that there is nothing more. It speaks Muster's [contract v1](https://github.com/ClearedStack/muster/blob/main/contract/v1/CONTRACT.md): the five worker calls and the release call, JSON over HTTP, the pod's ServiceAccount token as a bearer token.
 - **An inbox on disk.** Scored items, `screened_out` items and pending edit proposals are checked on arrival (with browser `CRLF` line endings normalized to `LF`) and kept for the owner, urgent lane first, then normal, then backfill, in order of arrival.
 - **The allowed outcomes, and no others.**
 
@@ -67,7 +67,7 @@ The spool directory is `/var/spool/cs` unless `-spool` or `COUNTERSIGN_SPOOL` sa
 ./countersign run -muster http://MUSTER-ADDRESS:8080
 ```
 
-`MUSTER_URL` supplies the address when `-muster` is omitted, and `CONTRACT_VERSION` (when set) must be `v1`. `-token-file` names the ServiceAccount token and defaults to the path a pod is given. The loop runs until it is stopped. The owner decides with the other commands, run against the same spool directory, for example with `kubectl exec` in the pod.
+`MUSTER_URL` supplies the address when `-muster` is omitted, and `CONTRACT_VERSION` (when set) must be `v1`. `-token-file` names the ServiceAccount token and defaults to the path a pod is given. The loop runs until it is stopped. Because the `ko` static base image contains no shell, the owner runs `/ko-app/countersign` directly with `kubectl exec` against `/var/spool/cs` (for example `kubectl -n cs-workers exec -it deploy/countersign -- /ko-app/countersign review`).
 
 ### Alone, against the stand-in
 
@@ -81,6 +81,7 @@ In another terminal, be the owner:
 
 ```sh
 ./countersign -spool ./spool list              # what is waiting
+./countersign -spool ./spool review            # step through waiting items interactively (-kind, -lane, or ID...)
 ./countersign -spool ./spool show PA-0002      # one item, and the outcomes allowed for it
 
 # Refused: an override needs a written reason.
@@ -97,12 +98,12 @@ In another terminal, be the owner:
 
 Within two seconds the first terminal logs `spool.acknowledged` for each decision. The stand-in lives in the memory of the `run` command, so stopping it forgets the leases. The spool is on disk and survives.
 
-Other commands: `add [FILE]` checks in one item by hand for trying the rules (it has no lease, so a decision on it cannot be sent), `decide -f FILE` takes a decision as JSON, `rules` lists every rule with its error code, and `version` prints the version. A command exits with 0 on success, 1 with a public error on standard error, and 2 for a mistake in how it was called.
+Other commands: `review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]` walks waiting items one at a time and prompts only for the fields each outcome needs (leaving skipped or interrupted items untouched), `add [FILE]` checks in one item by hand for trying the rules (it has no lease, so a decision on it cannot be sent), `decide -f FILE` takes a decision as JSON, `rules` lists every rule with its error code, and `version` prints the version. A command exits with 0 on success, 1 with a public error on standard error, and 2 for a mistake in how it was called.
 
 To build the image without publishing it:
 
 ```sh
-KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=false --tarball countersign.tar
+KO_DOCKER_REPO=registry.invalid/countersign ko build --base-import-paths --push=false --tarball=countersign.tar ./cmd/countersign
 ```
 
 ## Rules and saved examples
@@ -146,12 +147,12 @@ Each of these waits on another component or on cluster rollout.
 | Requirement | Where it stands |
 | --- | --- |
 | Pausing an unfamiliar item | Countersign asks with `needs_subtool`. Muster's contract has no such move from `scored`, `screened_out` or `pending_approval`, so Muster answers `409 move_not_allowed`. The item is not shown to the owner, the refusal is logged once, and the item comes back each time its lease runs out. |
-| Assay's evaluation shape | Countersign and Logbook expect `score`, lower-case `recommendation` (`build`, `link`, `park` or `reject`), `split_flag`, and `gates` as an object keyed by gate name, as defined in Muster's contract v1. Assay's open branch still emits `total`, `Build`, `split_merge_review` and a slice of `gates`; until Assay matches `CONTRACT.md`, Countersign stops those items with `E_PARSE`. |
-| Worker results across a Muster restart | Muster writes `core.evaluation` to Logbook and keeps `results.*` plus an edit proposal's `file` and `reason` in process memory. After a Muster restart, Muster needs to reconstruct `results.assay` from `core.evaluation` (and Logbook needs columns for worker results and proposal `file`/`reason`) so leased items still carry their evaluation. |
+| Proposal `file` and `reason` across a Muster restart | Assay and Muster on `main` now match `CONTRACT.md` and reconstruct `results.assay` and `results.countersign` from Logbook's `core.evaluation` and `core.decision` tables across restarts. An edit proposal's optional `file` and `reason` still live in Muster's process memory until Logbook's `core.edit_proposal` adds columns for them. |
+| Keelworks and Shipkeeper `app.yaml` worker schema | Keelworks builds `./cmd/countersign` with `ko` via [`.ko.yaml`](.ko.yaml), signs the image into Lazarette, and pins `digest:` in a root `app.yaml` in Plainforge. Shipkeeper's current `app.yaml` parser requires a listening TCP `port` (`1..65535`) and has no fields for `args: ["run"]`, `PersistentVolumeClaim` spool mounts, or Muster/DNS egress; until `app.yaml` covers portless `cs-workers` workloads, Countersign is applied from [`deploy/`](deploy) and observed read-only by Shipkeeper. |
 | Listing every stopped item, and releasing stopped proposals | Muster's contract has no call to list stopped items across all workers (`held` lists those Countersign stopped itself), and `POST /v1/release` accepts `PA-...` item IDs only, not `EP-...` proposal IDs. |
 | Keeping a decision when the credential is rejected | `401` and `403` are sorted as refusals. A decision in the spool at that moment is set aside and has to be made again when the item is offered again. |
-| A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with the command line inside the pod. |
-| Cluster prerequisites at deploy time | `cs-workers` namespace, a signed `countersign@sha256:...` image in Lazarette written by Keelworks, Muster's `Service` (`muster.clearedstack.svc.cluster.local:8080`) and ingress `NetworkPolicy` in `clearedstack`, and the worker `PriorityClass` (omitted until created in-cluster). |
+| A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with `review` or `decide` inside the pod. |
+| Cluster prerequisites at deploy time | `cs-workers` namespace, a signed `countersign@sha256:...` image in Lazarette written by Keelworks, and the worker `PriorityClass` (omitted until created in-cluster; `clearedstack-high` and `cs-build-low` are defined in Logbook and Keelworks). |
 
 Choices made here that the specification does not state, so that they can be corrected: a decision or release reason is at most 2000 bytes (matching Logbook's `core.decision` rule), a blocker or held screening note is at most 4096 bytes (512 for a title, 256 for a tool, parent, target, repository or file), a lease answer is read up to 256 KiB, the inbox holds at most 256 items, one call to Muster may take 10 seconds, the last 200 delivered or refused results are kept for `log`, and a failure of the local disk is reported as `E_TIMEOUT`.
 

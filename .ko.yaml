@@ -1,6 +1,21 @@
-# Countersign is built straight from source with ko. There is no Dockerfile.
-# Build an image file without publishing it:
-#   KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=false --tarball countersign.tar
+# Build Countersign straight from source with ko. There is no Dockerfile.
+#
+#   KO_DOCKER_REPO=lazarette.clearedstack.svc.cluster.local:5000 \
+#     ko build --base-import-paths ./cmd/countersign
+#
+# Build an image file locally without publishing it:
+#
+#   KO_DOCKER_REPO=registry.invalid/countersign \
+#     ko build --base-import-paths --push=false --tarball=countersign.tar ./cmd/countersign
+#
+# The upstream static base image is pinned by sha256 digest, runs as non-root
+# (uid 65532), and includes no shell or package manager. Inside the cluster,
+# Keelworks overrides KO_DEFAULTBASEIMAGE with the pre-imported base image in
+# Lazarette so nothing is pulled from outside at build or run time.
+defaultBaseImage: gcr.io/distroless/static@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f
+defaultPlatforms:
+  - linux/arm64
+
 builds:
   - id: countersign
     main: ./cmd/countersign
@@ -9,4 +24,5 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s
+      - -w
