@@ -475,3 +475,70 @@ func TestReviewFiltersOutcomesAndBounds(t *testing.T) {
 		t.Fatalf("proposal decline review: %+v", r)
 	}
 }
+
+func TestStatusSummaryAndJSON(t *testing.T) {
+	spool := t.TempDir()
+
+	// Usage checks.
+	for _, bad := range [][]string{{"status", "extra"}, {"status", "-bogus"}} {
+		if r := cs(t, spool, "", bad...); r.code != exitUsage {
+			t.Errorf("%v: want exitUsage, got %+v", bad, r)
+		}
+	}
+
+	// Empty spool.
+	r := cs(t, spool, "", "status")
+	wantEmpty := `INBOX   0 waiting  (urgent 0, normal 0, backfill 0; scored 0, screened_out 0, proposals 0)
+OUTBOX  0 queued   (waiting 0, unleased 0)
+HELD    0 stopped  (local E_PARSE awaiting release)
+LOG     0 settled  (acknowledged 0, refused 0)
+`
+	if r.code != exitOK || r.stdout != wantEmpty {
+		t.Fatalf("empty status:\n%s\nwant:\n%s", r.stdout, wantEmpty)
+	}
+
+	// Run stand-in seed (PA-0001 scored normal, PA-0002 screened_out normal,
+	// PA-0004 unfamiliar -> refused pause, plus proposals in examples/standin.json),
+	// plus one broken item stopped with E_PARSE.
+	seed := filepath.Join(t.TempDir(), "seed.json")
+	if err := os.WriteFile(seed, []byte(`{"steps":[
+		{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"score":82,"recommendation":"build"}}},
+		{"kind":"item","id":"PA-0002","state":"screened_out","lane":"backfill","results":{"assay":{"gates":{"one_job":{"passed":false,"reason":"Too broad."}}}}},
+		{"kind":"item","id":"PA-0003","state":"scored","lane":"normal","results":{"assay":{"recommendation":"build"}}},
+		{"kind":"item","id":"PA-0004","state":"scored","lane":"normal","results":{"assay":{"score":70,"recommendation":"split"}}},
+		{"kind":"proposal","id":"EP-0001","state":"pending_approval","lane":"urgent","proposal":{"target":"catalog/x/desc","edit_kind":"DATA","change":"Fix typo."}}
+	],"ownership":["catalog/x/desc"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r = cs(t, spool, "", "run", "-standin", seed, "-interval", "1ms", "-ticks", "2"); r.code != exitOK {
+		t.Fatalf("run seed: %+v", r)
+	}
+	// Decide EP-0001 so one record sits waiting in the outbox.
+	if r = cs(t, spool, "", "decide", "EP-0001", "approve"); r.code != exitOK {
+		t.Fatalf("decide EP-0001: %+v", r)
+	}
+
+	r = cs(t, spool, "", "status")
+	wantPopulated := `INBOX   2 waiting  (urgent 0, normal 1, backfill 1; scored 1, screened_out 1, proposals 0)
+OUTBOX  1 queued   (waiting 1, unleased 0)
+HELD    1 stopped  (local E_PARSE awaiting release)
+LOG     2 settled  (acknowledged 1, refused 1)
+`
+	if r.code != exitOK || r.stdout != wantPopulated {
+		t.Errorf("status:\n%s\nwant:\n%s", r.stdout, wantPopulated)
+	}
+
+	r = cs(t, spool, "", "status", "-json")
+	if r.code != exitOK {
+		t.Fatalf("status -json: %+v", r)
+	}
+	var got statusSummary
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
+		t.Fatalf("unmarshal status -json: %v\n%s", err, r.stdout)
+	}
+	if got.Inbox.Total != 2 || got.Inbox.Normal != 1 || got.Inbox.Backfill != 1 ||
+		got.Inbox.Scored != 1 || got.Inbox.ScreenedOut != 1 || got.Inbox.Proposals != 0 ||
+		got.Outbox.Waiting != 1 || got.Held != 1 || got.Log.Acknowledged != 1 || got.Log.Refused != 1 {
+		t.Errorf("unexpected status JSON: %+v", got)
+	}
+}

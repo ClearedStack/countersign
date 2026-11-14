@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Tests only. No image is built or pushed from GitHub.
+jobs:
+  tests:
+    name: Go vet, race, saved examples, pod budget and fuzzers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: gofmt -l . | (! grep .)
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race -count=1 ./...
+
+      - name: go fuzz
+        run: |
+          go test -fuzz=^FuzzItemParse$ -fuzztime=5s ./internal/item
+          go test -fuzz=^FuzzDecideParseAndApply$ -fuzztime=5s ./internal/decide
+          go test -fuzz=^FuzzRelease$ -fuzztime=5s ./internal/decide
+          go test -fuzz=^FuzzDecodeLease$ -fuzztime=5s ./internal/muster
+          go test -fuzz=^FuzzReadPromptLine$ -fuzztime=5s ./cmd/countersign

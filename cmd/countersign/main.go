@@ -2,6 +2,7 @@
 // person decides.
 //
 //	countersign [-spool DIR] add [FILE]
+//	countersign [-spool DIR] status [-json]
 //	countersign [-spool DIR] list
 //	countersign [-spool DIR] show ID
 //	countersign [-spool DIR] review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]
@@ -59,6 +60,7 @@ const usage = `countersign holds scored candidates and edit proposals until a pe
 usage: countersign [-spool DIR] COMMAND
 
   add [FILE]            check in one item (JSON) from FILE or standard input
+  status [-json]        summarize inbox, outbox, stopped and settled counts
   list                  list the items waiting for a decision
   show ID               show one waiting item and the outcomes allowed for it
   review [ID...]        step through waiting items interactively; flags: -kind -lane
@@ -137,7 +139,7 @@ func run(args []string, e env) int {
 	case "help":
 		fmt.Fprint(e.stdout, usage)
 		return exitOK
-	case "add", "list", "show", "review", "decide", "release", "held", "log", "run":
+	case "add", "status", "list", "show", "review", "decide", "release", "held", "log", "run":
 	default:
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -150,6 +152,8 @@ func run(args []string, e env) int {
 	switch cmd {
 	case "add":
 		return cmdAdd(e, st, rest)
+	case "status":
+		return cmdStatus(e, st, rest)
 	case "list":
 		return cmdList(e, st)
 	case "show":
@@ -383,16 +387,14 @@ func cmdRelease(e env, st *store.Store, args []string) int {
 	return exitOK
 }
 
-// cmdHeld lists the items this Countersign stopped with E_PARSE and has not
-// since released, as far back as the local log goes. Items other workers
-// stopped are not known here.
-func cmdHeld(e env, st *store.Store) int {
-	entries, err := st.Log()
-	if err != nil {
-		return public(e, err)
-	}
-	type held struct{ at, rule string }
-	stopped := map[string]held{}
+type heldItem struct {
+	id   string
+	at   string
+	rule string
+}
+
+func stoppedItems(entries []store.Entry) []heldItem {
+	stopped := map[string]heldItem{}
 	var order []string
 	for _, en := range entries {
 		rec := en.Record
@@ -401,18 +403,127 @@ func cmdHeld(e env, st *store.Store) int {
 			if _, seen := stopped[rec.Item]; !seen {
 				order = append(order, rec.Item)
 			}
-			stopped[rec.Item] = held{rec.At, rec.Rule}
+			stopped[rec.Item] = heldItem{id: rec.Item, at: rec.At, rule: rec.Rule}
 		case rec.Call == record.Release && en.Status != store.Refused:
 			delete(stopped, rec.Item)
 		}
 	}
-	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTOPPED\tRULE")
+	var out []heldItem
 	for _, id := range order {
 		if h, ok := stopped[id]; ok {
-			fmt.Fprintf(tw, "%s\t%s\t%s\n", id, h.at, h.rule)
+			out = append(out, h)
 		}
 	}
+	return out
+}
+
+// cmdHeld lists the items this Countersign stopped with E_PARSE and has not
+// since released, as far back as the local log goes. Items other workers
+// stopped are not known here.
+func cmdHeld(e env, st *store.Store) int {
+	entries, err := st.Log()
+	if err != nil {
+		return public(e, err)
+	}
+	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tSTOPPED\tRULE")
+	for _, h := range stoppedItems(entries) {
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", h.id, h.at, h.rule)
+	}
+	tw.Flush()
+	return exitOK
+}
+
+type statusSummary struct {
+	Inbox struct {
+		Total       int `json:"total"`
+		Urgent      int `json:"urgent"`
+		Normal      int `json:"normal"`
+		Backfill    int `json:"backfill"`
+		Scored      int `json:"scored"`
+		ScreenedOut int `json:"screened_out"`
+		Proposals   int `json:"proposals"`
+	} `json:"inbox"`
+	Outbox struct {
+		Total    int `json:"total"`
+		Waiting  int `json:"waiting"`
+		Unleased int `json:"unleased"`
+	} `json:"outbox"`
+	Held int `json:"held"`
+	Log  struct {
+		Settled      int `json:"settled"`
+		Acknowledged int `json:"acknowledged"`
+		Refused      int `json:"refused"`
+	} `json:"log"`
+}
+
+func cmdStatus(e env, st *store.Store, args []string) int {
+	fs := flag.NewFlagSet("status", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	asJSON := fs.Bool("json", false, "")
+	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
+		return usageError(e, "status: see countersign help")
+	}
+
+	pending, err := st.Pending()
+	if err != nil {
+		return public(e, err)
+	}
+	entries, err := st.Log()
+	if err != nil {
+		return public(e, err)
+	}
+
+	var s statusSummary
+	s.Inbox.Total = len(pending)
+	for _, h := range pending {
+		switch h.Item.Lane {
+		case item.Urgent:
+			s.Inbox.Urgent++
+		case item.Normal:
+			s.Inbox.Normal++
+		case item.Backfill:
+			s.Inbox.Backfill++
+		}
+		switch {
+		case h.Item.Kind == item.Proposal:
+			s.Inbox.Proposals++
+		case h.Item.State == item.Scored:
+			s.Inbox.Scored++
+		case h.Item.State == item.ScreenedOut:
+			s.Inbox.ScreenedOut++
+		}
+	}
+	for _, en := range entries {
+		switch en.Status {
+		case store.Waiting:
+			s.Outbox.Total++
+			s.Outbox.Waiting++
+		case store.Unleased:
+			s.Outbox.Total++
+			s.Outbox.Unleased++
+		case store.Acknowledged:
+			s.Log.Settled++
+			s.Log.Acknowledged++
+		case store.Refused:
+			s.Log.Settled++
+			s.Log.Refused++
+		}
+	}
+	s.Held = len(stoppedItems(entries))
+
+	if *asJSON {
+		printJSON(e.stdout, s, true)
+		return exitOK
+	}
+	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "INBOX\t%d waiting\t(urgent %d, normal %d, backfill %d; scored %d, screened_out %d, proposals %d)\n",
+		s.Inbox.Total, s.Inbox.Urgent, s.Inbox.Normal, s.Inbox.Backfill, s.Inbox.Scored, s.Inbox.ScreenedOut, s.Inbox.Proposals)
+	fmt.Fprintf(tw, "OUTBOX\t%d queued\t(waiting %d, unleased %d)\n",
+		s.Outbox.Total, s.Outbox.Waiting, s.Outbox.Unleased)
+	fmt.Fprintf(tw, "HELD\t%d stopped\t(local E_PARSE awaiting release)\n", s.Held)
+	fmt.Fprintf(tw, "LOG\t%d settled\t(acknowledged %d, refused %d)\n",
+		s.Log.Settled, s.Log.Acknowledged, s.Log.Refused)
 	tw.Flush()
 	return exitOK
 }
