@@ -142,7 +142,6 @@ Native Go fuzz targets (`FuzzDecodeLease`, `FuzzItemParse`, `FuzzDecideParseAndA
 | [`testdata/rules`](testdata/rules) | The saved examples |
 | [`testdata/contract`](testdata/contract) | Muster's contract examples |
 | [`.ko.yaml`](.ko.yaml) | The image build |
-| [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Read-only CI running `gofmt`, `go vet`, `go test -race`, and bounded fuzzers |
 
 ## Not yet done
 
