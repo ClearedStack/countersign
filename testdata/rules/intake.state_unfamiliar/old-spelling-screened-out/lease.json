@@ -14,22 +14,17 @@
       }
     },
     "assay": {
-      "worker": "assay",
-      "state": "screened_out",
-      "gates": [
-        {
-          "id": "public_source",
-          "name": "Public source",
-          "pass": true,
-          "reason": "The rules come from public material."
+      "profile": "pricing",
+      "gates": {
+        "public_source": {
+          "passed": true
         },
-        {
-          "id": "one_job",
-          "name": "One job",
-          "pass": false,
+        "one_job": {
+          "passed": false,
           "reason": "It does three jobs, not one."
         }
-      ]
+      },
+      "factors": {}
     }
   }
 }

@@ -16,8 +16,8 @@ import (
 var at = time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC)
 
 const (
-	scoredStep   = `{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"total":70,"recommendation":"Park"}}}`
-	screenedStep = `{"kind":"item","id":"PA-0002","state":"screened_out","lane":"normal","results":{"assay":{"gates":[{"name":"One job","pass":false,"reason":"It does three jobs."}]}}}`
+	scoredStep   = `{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"score":70,"recommendation":"park"}}}`
+	screenedStep = `{"kind":"item","id":"PA-0002","state":"screened_out","lane":"normal","results":{"assay":{"gates":{"one_job":{"passed":false,"reason":"It does three jobs."}}}}}`
 	proposalStep = `{"kind":"proposal","id":"EP-0001","state":"pending_approval","lane":"normal","proposal":{"target":"catalog/sample/description","repository":"clearedstack.com","file":"src/data/sample.json","edit_kind":"DATA","change":"Fix the spelling.","reason":""}}`
 )
 
@@ -294,7 +294,7 @@ func TestRequeueAndReplace(t *testing.T) {
 	if err := s.Replace(json.RawMessage(screenedStep)); !errors.Is(err, ErrSeed) {
 		t.Errorf("replacing a step the stand-in does not have: %v", err)
 	}
-	changed := `{"kind":"item","id":"PA-0001","state":"screened_out","lane":"urgent","results":{"assay":{"gates":[{"name":"One job","pass":false,"reason":"It does three jobs."}]}}}`
+	changed := `{"kind":"item","id":"PA-0001","state":"screened_out","lane":"urgent","results":{"assay":{"gates":{"one_job":{"passed":false,"reason":"It does three jobs."}}}}}`
 	if err := s.Replace(json.RawMessage(changed)); err != nil {
 		t.Fatal(err)
 	}

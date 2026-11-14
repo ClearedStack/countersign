@@ -23,7 +23,7 @@ import (
 var at = time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC)
 
 const (
-	scoredStep   = `{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"total":82,"recommendation":"Build"}}}`
+	scoredStep   = `{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"score":82,"recommendation":"build"}}}`
 	proposalStep = `{"kind":"proposal","id":"EP-0001","state":"pending_approval","lane":"urgent","proposal":{"target":"catalog/sample/description","repository":"clearedstack.com","file":"src/data/sample.json","edit_kind":"DATA","change":"Fix the spelling.","reason":""}}`
 )
 

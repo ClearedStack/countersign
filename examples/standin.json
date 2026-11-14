@@ -11,7 +11,7 @@
       "lane": "normal",
       "results": {
         "sextant": {"core_job": {"value": "Check a sample labor rate against a made-up ceiling"}},
-        "assay": {"total": 82, "recommendation": "Build"}
+        "assay": {"score": 82, "recommendation": "build"}
       }
     },
     {
@@ -22,10 +22,10 @@
       "results": {
         "sextant": {"core_job": {"value": "Draft, price and submit a whole sample bid"}},
         "assay": {
-          "gates": [
-            {"name": "Public source", "pass": true, "reason": "The rules come from public material."},
-            {"name": "One job", "pass": false, "reason": "It does three jobs, not one."}
-          ]
+          "gates": {
+            "public_source": {"passed": true},
+            "one_job": {"passed": false, "reason": "It does three jobs, not one."}
+          }
         }
       }
     },
@@ -36,7 +36,7 @@
       "lane": "backfill",
       "results": {
         "sextant": {"core_job": {"value": "Count the pages in a made-up proposal volume"}},
-        "assay": {"total": 60, "recommendation": "Park"}
+        "assay": {"score": 60, "recommendation": "park"}
       }
     },
     {
@@ -59,7 +59,7 @@
       "state": "scored",
       "lane": "normal",
       "results": {
-        "assay": {"total": 90, "recommendation": "Split"}
+        "assay": {"score": 90, "recommendation": "split"}
       }
     }
   ],

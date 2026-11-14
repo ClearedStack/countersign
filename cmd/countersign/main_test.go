@@ -30,7 +30,7 @@ func cs(t *testing.T, spool, stdin string, args ...string) result {
 
 const (
 	scoredItem   = `{"id":"PA-0001","kind":"item","state":"scored","lane":"normal","title":"Check a sample labor rate against a made-up ceiling","score":82,"recommendation":"approved"}`
-	screenedItem = `{"id":"PA-0002","kind":"item","state":"screened_out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"One job: It does three jobs, not one."}`
+	screenedItem = `{"id":"PA-0002","kind":"item","state":"screened_out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"one_job: It does three jobs, not one."}`
 	proposalItem = `{"id":"EP-0001","kind":"proposal","state":"pending_approval","lane":"urgent","target":"catalog/sample-rate-checker/description","repository":"clearedstack.com","file":"src/data/sample-catalog.json","edit_kind":"DATA","change":"The description says 'calender'.\nIt should say 'calendar'.","reason":"A spelling mistake."}`
 )
 
@@ -46,7 +46,7 @@ func TestOverrideIsRefusedWithoutAWrittenReason(t *testing.T) {
 	wantList := `ID       KIND      STATE             LANE    DETAIL                                        SUMMARY
 EP-0001  proposal  pending_approval  urgent  DATA catalog/sample-rate-checker/description  The description says 'calender'. It should say 'calendar'.
 PA-0001  item      scored            normal  score 82, recommended approved                Check a sample labor rate against a made-up ceiling
-PA-0002  item      screened_out      normal  One job: It does three jobs, not one.         Draft, price and submit a whole sample bid
+PA-0002  item      screened_out      normal  one_job: It does three jobs, not one.         Draft, price and submit a whole sample bid
 `
 	if r.code != exitOK || r.stdout != wantList {
 		t.Errorf("list:\n%s\nwant:\n%s", r.stdout, wantList)
@@ -238,8 +238,8 @@ func TestHeldAndRelease(t *testing.T) {
 	seed := filepath.Join(t.TempDir(), "seed.json")
 	// One item Assay scored without a total: broken, so Countersign stops it.
 	if err := os.WriteFile(seed, []byte(`{"steps":[
-		{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"recommendation":"Build"}}},
-		{"kind":"item","id":"PA-0002","state":"scored","lane":"normal","results":{"assay":{"total":82,"recommendation":"Build"}}}]}`), 0o600); err != nil {
+		{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"recommendation":"build"}}},
+		{"kind":"item","id":"PA-0002","state":"scored","lane":"normal","results":{"assay":{"score":82,"recommendation":"build"}}}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if r := cs(t, spool, "", "run", "-standin", seed, "-interval", "1ms", "-ticks", "2"); r.code != exitOK ||

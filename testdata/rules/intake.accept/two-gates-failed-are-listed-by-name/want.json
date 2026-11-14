@@ -6,6 +6,6 @@
     "state": "screened_out",
     "lane": "normal",
     "title": "Draft, price and submit a whole sample bid",
-    "screen_reason": "One job: It does three jobs, not one.\nArithmetic, not advice: It gives advice."
+    "screen_reason": "arithmetic_not_advice: It gives advice.\none_job: It does three jobs, not one."
   }
 }

@@ -106,7 +106,7 @@ KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=fa
 
 ## Rules and saved examples
 
-Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 165 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
+Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 167 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
 
 | Rules | What they cover |
 | --- | --- |
@@ -118,7 +118,7 @@ Every rule has an identifier and at least one saved example: an input and the ex
 
 After a deliberate change, `go test . -update` rewrites the expected outputs. Read the difference before committing it.
 
-[`testdata/contract/`](testdata/contract) is a copy of the 50 saved examples in Muster's contract, taken at Muster's commit `a362cb1`. A test replays them against Countersign's client: each worker call and the release call is made and what is sent must match the example exactly, each refusal must be sorted correctly into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
+[`testdata/contract/`](testdata/contract) is a copy of the 52 saved examples in Muster's contract, taken at Muster's commit `470dddf`. A test replays them against Countersign's client: each worker call and the release call is made and what is sent must match the example exactly, each refusal must be sorted correctly into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
 
 ## Layout
 
@@ -144,7 +144,7 @@ Each of these is a requirement that is not built or not proven, with the reason.
 | --- | --- |
 | Running against a live Muster | The client is built and replays Muster's saved examples, but it has only ever talked to the fake server in this repository. The first run against a real Muster is still to do. |
 | Pausing an unfamiliar item | Countersign asks with `needs_subtool`. Muster's contract has no such move from any state Countersign holds, so Muster refuses. The item is not shown to the owner, the refusal is logged once, and the item comes back each time its lease runs out. The two specifications disagree and one has to change. |
-| Where the score and title come from | Muster's contract carries earlier workers' results without defining them. Countersign reads `total`, `recommendation`, `split_merge_review` and the failed `gates` from Assay's published result, and the title from `found.title` or Sextant's `core_job`. If those change, so must Countersign. |
+| Where the score and title come from | Countersign reads Assay's evaluation in the form Muster's contract names: `score`, `recommendation` (`build`, `link`, `park` or `reject`), `split_flag`, and `gates` as a verdict for each gate by name. Assay's own branch gives these under other names today (`total`, `Build`, `split_merge_review`, gates as a list). Until Assay follows the contract, an item it scores is stopped here with `E_PARSE`. The title comes from `found.title`, or else Sextant's `core_job`, which the contract does not define. |
 | Listing every stopped item | Muster's contract has no call for it. `held` lists only the items Countersign stopped itself, as far back as its local log goes. |
 | Keeping a decision when the credential is rejected | `401` and `403` are sorted as refusals, as instructed for this build. A decision in the spool at that moment is set aside and has to be made again when the item is offered again. Retrying instead would keep it. |
 | A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with the command line, run inside the pod. |

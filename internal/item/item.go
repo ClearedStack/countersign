@@ -177,11 +177,11 @@ type Item struct {
 	Lane  Lane   `json:"lane"`
 
 	// Candidates. Title is what the tool does, when an earlier worker said.
-	Title            string `json:"title,omitempty"`
-	Score            *int   `json:"score,omitempty"`
-	Recommendation   State  `json:"recommendation,omitempty"`
-	SplitMergeReview bool   `json:"split_merge_review,omitempty"`
-	ScreenReason     string `json:"screen_reason,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Score          *int   `json:"score,omitempty"`
+	Recommendation State  `json:"recommendation,omitempty"`
+	SplitFlag      bool   `json:"split_flag,omitempty"`
+	ScreenReason   string `json:"screen_reason,omitempty"`
 
 	// Edit proposals. The names are the ones Muster uses.
 	Target     string `json:"target,omitempty"`
@@ -261,7 +261,7 @@ func Check(it Item) *rule.Error {
 	}
 
 	proposalFields := it.Target != "" || it.Repository != "" || it.File != "" || it.EditKind != "" || it.Change != "" || it.Reason != ""
-	scoreFields := it.Score != nil || it.Recommendation != "" || it.SplitMergeReview || it.ScreenReason != ""
+	scoreFields := it.Score != nil || it.Recommendation != "" || it.SplitFlag || it.ScreenReason != ""
 
 	switch it.Kind {
 	case Candidate:
@@ -291,7 +291,7 @@ func Check(it Item) *rule.Error {
 				note(rule.IntakeRecommendationUnfamiliar)
 			}
 		case ScreenedOut:
-			if it.Score != nil || it.Recommendation != "" || it.SplitMergeReview {
+			if it.Score != nil || it.Recommendation != "" || it.SplitFlag {
 				return fail(rule.IntakeFieldUnexpected)
 			}
 			if Blank(it.ScreenReason) {

@@ -2,7 +2,7 @@
 
 These files are a copy of `contract/v1/examples/` from
 [ClearedStack/muster](https://github.com/ClearedStack/muster), branch
-`claude/repo-build-prompt-1csgx6`, at commit `a362cb1`. They are Muster's saved
+`claude/repo-build-prompt-1csgx6`, at commit `470dddf`. They are Muster's saved
 examples of every call and every refusal in its contract. They are not edited
 here. To update them, copy the directory again and record the new commit.
 

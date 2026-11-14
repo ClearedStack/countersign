@@ -3,6 +3,7 @@ package muster
 import (
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -105,16 +106,16 @@ func DecodeLease(body []byte) (Lease, *rule.Error) {
 	return full, nil
 }
 
-// assayResult is the part of Assay's published result that Countersign
-// reads: the rubric total, the recommendation and the gate verdicts. The
-// rest of the result is left alone.
-type assayResult struct {
-	Total            *int   `json:"total"`
-	Recommendation   string `json:"recommendation"`
-	SplitMergeReview bool   `json:"split_merge_review"`
-	Gates            []struct {
-		Name   string `json:"name"`
-		Pass   *bool  `json:"pass"`
+// evaluation is the part of Assay's result that Countersign reads. Its form
+// is the one Muster's contract names for an evaluation, which is Logbook's:
+// the score, the recommendation, the split flag, and a verdict for each gate
+// by name. The rest of the result is left alone.
+type evaluation struct {
+	Score          *int   `json:"score"`
+	Recommendation string `json:"recommendation"`
+	SplitFlag      bool   `json:"split_flag"`
+	Gates          map[string]struct {
+		Passed *bool  `json:"passed"`
 		Reason string `json:"reason"`
 	} `json:"gates"`
 }
@@ -130,10 +131,10 @@ type sextantResult struct {
 // recommendations maps Assay's four recommendations to the state each one
 // recommends.
 var recommendations = map[string]item.State{
-	"Build":  item.Approved,
-	"Link":   item.Linked,
-	"Park":   item.Parked,
-	"Reject": item.Rejected,
+	"build":  item.Approved,
+	"link":   item.Linked,
+	"park":   item.Parked,
+	"reject": item.Rejected,
 }
 
 // Item turns a lease into the item the owner is shown, and checks it. The
@@ -176,13 +177,13 @@ func (l Lease) Item() (item.Item, *rule.Error) {
 		if !ok {
 			return fail(rule.IntakeFieldMissing)
 		}
-		var a assayResult
+		var a evaluation
 		if json.Unmarshal(raw, &a) != nil {
 			return fail(rule.IntakeMalformed)
 		}
 		if it.State == item.Scored {
-			it.Score = a.Total
-			it.SplitMergeReview = a.SplitMergeReview
+			it.Score = a.Score
+			it.SplitFlag = a.SplitFlag
 			if to, known := recommendations[a.Recommendation]; known {
 				it.Recommendation = to
 			} else {
@@ -191,17 +192,14 @@ func (l Lease) Item() (item.Item, *rule.Error) {
 				it.Recommendation = item.State(a.Recommendation)
 			}
 		} else {
+			// Each failed gate, by name, in a fixed order.
 			var failed []string
-			for _, g := range a.Gates {
-				if g.Pass == nil || *g.Pass {
-					continue
+			for name, g := range a.Gates {
+				if g.Passed != nil && !*g.Passed {
+					failed = append(failed, name+": "+strings.TrimSpace(g.Reason))
 				}
-				line := strings.TrimSpace(g.Reason)
-				if name := strings.TrimSpace(g.Name); name != "" {
-					line = name + ": " + line
-				}
-				failed = append(failed, line)
 			}
+			sort.Strings(failed)
 			it.ScreenReason = strings.Join(failed, "\n")
 		}
 	case item.Proposal:
