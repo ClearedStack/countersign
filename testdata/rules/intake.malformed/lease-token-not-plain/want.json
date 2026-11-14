@@ -1,0 +1,5 @@
+{
+  "rule": "intake.malformed",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.malformed PA-0001: the item or lease is not one well-formed JSON object of the expected shape [fp 669e8505d4123fa8]"
+}

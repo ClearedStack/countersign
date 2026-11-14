@@ -1,0 +1,17 @@
+{
+  "rule": "intake.recommendation_unfamiliar",
+  "code": "E_NEEDS_SUBTOOL",
+  "error": "E_NEEDS_SUBTOOL intake.recommendation_unfamiliar PA-0001: there is no rule for this recommendation [fp 61121fbbee3131f3]",
+  "record": {
+    "contract": "v1",
+    "call": "needs_subtool",
+    "id": "f3900f2020a4e54b75545a5ba952f936",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "to": "needs_subtool",
+    "code": "E_NEEDS_SUBTOOL",
+    "rule": "intake.recommendation_unfamiliar",
+    "fingerprint": "61121fbbee3131f3"
+  }
+}

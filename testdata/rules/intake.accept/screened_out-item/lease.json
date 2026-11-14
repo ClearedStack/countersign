@@ -1,0 +1,30 @@
+{
+  "lease": "PA-0002.1.1",
+  "kind": "item",
+  "id": "PA-0002",
+  "state": "screened_out",
+  "lane": "normal",
+  "attempt": 1,
+  "expires": "2026-01-05T10:01:00Z",
+  "results": {
+    "sextant": {
+      "core_job": {
+        "value": "Draft, price and submit a whole sample bid",
+        "tier": "stated"
+      }
+    },
+    "assay": {
+      "profile": "pricing",
+      "gates": {
+        "public_source": {
+          "passed": true
+        },
+        "one_job": {
+          "passed": false,
+          "reason": "It does three jobs, not one."
+        }
+      },
+      "factors": {}
+    }
+  }
+}

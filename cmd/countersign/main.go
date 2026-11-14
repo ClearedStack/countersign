@@ -4,9 +4,13 @@
 //	countersign [-spool DIR] add [FILE]
 //	countersign [-spool DIR] list
 //	countersign [-spool DIR] show ID
+//	countersign [-spool DIR] review [-kind item|proposal] [-lane urgent|normal|backfill] [ID...]
 //	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT]
 //	countersign [-spool DIR] decide -f FILE
+//	countersign [-spool DIR] release ID [-reason TEXT]
+//	countersign [-spool DIR] held
 //	countersign [-spool DIR] log
+//	countersign [-spool DIR] run -muster URL [-token-file FILE] [-interval D]
 //	countersign [-spool DIR] run -standin FILE [-interval D] [-ticks N]
 //	countersign rules
 //	countersign version
@@ -29,6 +33,7 @@ import (
 	"github.com/ClearedStack/countersign/internal/decide"
 	"github.com/ClearedStack/countersign/internal/item"
 	"github.com/ClearedStack/countersign/internal/muster"
+	"github.com/ClearedStack/countersign/internal/record"
 	"github.com/ClearedStack/countersign/internal/rule"
 	"github.com/ClearedStack/countersign/internal/store"
 	"github.com/ClearedStack/countersign/internal/worker"
@@ -56,15 +61,22 @@ usage: countersign [-spool DIR] COMMAND
   add [FILE]            check in one item (JSON) from FILE or standard input
   list                  list the items waiting for a decision
   show ID               show one waiting item and the outcomes allowed for it
+  review [ID...]        step through waiting items interactively; flags: -kind -lane
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
   decide -f FILE        record a decision given as JSON ("-" is standard input)
+  release ID            let an item run again that a worker stopped with E_PARSE;
+                        flag: -reason (kept in the local log only)
+  held                  list the items Countersign itself stopped with E_PARSE
   log                   list recent records and whether Muster has confirmed them
-  run -standin FILE     run the worker loop against the in-memory Muster stand-in
+  run -muster URL       run the lease loop against Muster (or set MUSTER_URL);
+                        -token-file names the ServiceAccount token, read afresh
+                        for every call; CONTRACT_VERSION, if set, must be v1
+  run -standin FILE     run the lease loop against the in-memory Muster stand-in
   rules                 list every rule and its public error code
   version               print the version
 
-outcomes: approve link merge park reject (a scored candidate)
-          override (a screened-out candidate)
+outcomes: approve link merge park reject (a scored item)
+          override (a screened_out item)
           approve decline (an edit proposal)
 `
 
@@ -73,6 +85,14 @@ type env struct {
 	stdout io.Writer
 	stderr io.Writer
 	now    func() time.Time
+	getenv func(string) string
+}
+
+func (e env) envVar(name string) string {
+	if e.getenv == nil {
+		return ""
+	}
+	return e.getenv(name)
 }
 
 func main() {
@@ -84,6 +104,7 @@ func main() {
 		stdout: os.Stdout,
 		stderr: os.Stderr,
 		now:    func() time.Time { return time.Now().UTC().Truncate(time.Second) },
+		getenv: os.Getenv,
 	}
 	os.Exit(run(os.Args[1:], e))
 }
@@ -91,7 +112,11 @@ func main() {
 func run(args []string, e env) int {
 	global := flag.NewFlagSet("countersign", flag.ContinueOnError)
 	global.SetOutput(io.Discard)
-	spool := global.String("spool", DefaultSpool, "")
+	defaultSpool := DefaultSpool
+	if v := e.envVar("COUNTERSIGN_SPOOL"); v != "" {
+		defaultSpool = v
+	}
+	spool := global.String("spool", defaultSpool, "")
 	if err := global.Parse(args); err != nil {
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -112,7 +137,7 @@ func run(args []string, e env) int {
 	case "help":
 		fmt.Fprint(e.stdout, usage)
 		return exitOK
-	case "add", "list", "show", "decide", "log", "run":
+	case "add", "list", "show", "review", "decide", "release", "held", "log", "run":
 	default:
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -129,8 +154,14 @@ func run(args []string, e env) int {
 		return cmdList(e, st)
 	case "show":
 		return cmdShow(e, st, rest)
+	case "review":
+		return cmdReview(e, st, rest)
 	case "decide":
 		return cmdDecide(e, st, rest)
+	case "release":
+		return cmdRelease(e, st, rest)
+	case "held":
+		return cmdHeld(e, st)
 	case "log":
 		return cmdLog(e, st)
 	default:
@@ -204,14 +235,16 @@ func cmdAdd(e env, st *store.Store, args []string) int {
 	if !ok {
 		return usageError(e, "cannot read the input")
 	}
-	in, err := st.Intake("", payload, e.now())
-	if err != nil {
+	it, perr := item.Parse(payload)
+	if perr != nil {
+		return public(e, perr)
+	}
+	// An item added by hand has no lease, so a decision on it is recorded
+	// here and cannot be sent to Muster.
+	if _, err := st.Accept("", it); err != nil {
 		return public(e, err)
 	}
-	if in.Err != nil {
-		return public(e, in.Err)
-	}
-	printJSON(e.stdout, in.Item, true)
+	printJSON(e.stdout, it, true)
 	return exitOK
 }
 
@@ -241,7 +274,7 @@ func cmdList(e env, st *store.Store) int {
 		detail, summary := "", ""
 		switch {
 		case it.Kind == item.Proposal:
-			detail, summary = it.Type+" "+it.Target, it.Body
+			detail, summary = it.EditKind+" "+it.Target, it.Change
 		case it.State == item.Scored:
 			detail, summary = fmt.Sprintf("score %d, recommended %s", *it.Score, it.Recommendation), it.Title
 		default:
@@ -324,6 +357,66 @@ func cmdDecide(e env, st *store.Store, args []string) int {
 	return exitOK
 }
 
+func cmdRelease(e env, st *store.Store, args []string) int {
+	fs := flag.NewFlagSet("release", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	reason := fs.String("reason", "", "")
+	var words []string
+	for len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return usageError(e, "release: unknown flag; see countersign help")
+		}
+		args = fs.Args()
+		if len(args) > 0 {
+			words = append(words, args[0])
+			args = args[1:]
+		}
+	}
+	if len(words) != 1 {
+		return usageError(e, "release takes one item identifier")
+	}
+	res, err := st.Release(words[0], *reason, e.now())
+	if err != nil {
+		return public(e, err)
+	}
+	printJSON(e.stdout, res, true)
+	return exitOK
+}
+
+// cmdHeld lists the items this Countersign stopped with E_PARSE and has not
+// since released, as far back as the local log goes. Items other workers
+// stopped are not known here.
+func cmdHeld(e env, st *store.Store) int {
+	entries, err := st.Log()
+	if err != nil {
+		return public(e, err)
+	}
+	type held struct{ at, rule string }
+	stopped := map[string]held{}
+	var order []string
+	for _, en := range entries {
+		rec := en.Record
+		switch {
+		case rec.Call == record.Fail && rec.Code == string(rule.Parse) && en.Status == store.Acknowledged && rec.Item != "":
+			if _, seen := stopped[rec.Item]; !seen {
+				order = append(order, rec.Item)
+			}
+			stopped[rec.Item] = held{rec.At, rec.Rule}
+		case rec.Call == record.Release && en.Status != store.Refused:
+			delete(stopped, rec.Item)
+		}
+	}
+	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tSTOPPED\tRULE")
+	for _, id := range order {
+		if h, ok := stopped[id]; ok {
+			fmt.Fprintf(tw, "%s\t%s\t%s\n", id, h.at, h.rule)
+		}
+	}
+	tw.Flush()
+	return exitOK
+}
+
 func cmdLog(e env, st *store.Store) int {
 	entries, err := st.Log()
 	if err != nil {
@@ -338,26 +431,46 @@ func cmdLog(e env, st *store.Store) int {
 func cmdRun(e env, st *store.Store, args []string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	address := fs.String("muster", "", "")
+	tokenFile := fs.String("token-file", muster.DefaultTokenFile, "")
 	standin := fs.String("standin", "", "")
-	interval := fs.Duration("interval", 15*time.Second, "")
+	interval := fs.Duration("interval", worker.Interval, "")
 	ticks := fs.Int("ticks", 0, "")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 || *interval <= 0 || *ticks < 0 {
 		return usageError(e, "run: see countersign help")
 	}
-	if *standin == "" {
-		return usageError(e, "run needs -standin FILE: the client for the real Muster is not built yet")
+	if *address == "" && *standin == "" {
+		*address = e.envVar("MUSTER_URL")
 	}
-	data, err := os.ReadFile(*standin)
-	if err != nil {
-		return usageError(e, "cannot read the stand-in file")
+	if (*address == "") == (*standin == "") {
+		return usageError(e, "run needs exactly one of -muster URL and -standin FILE")
 	}
-	seed, err := muster.ParseSeed(data)
-	if err != nil {
-		return usageError(e, "the stand-in file is not a usable seed")
-	}
-	queue, err := muster.NewStandIn(seed, e.now)
-	if err != nil {
-		return usageError(e, "the stand-in file is not a usable seed")
+
+	var queue muster.Queue
+	var snapshot func() muster.Snapshot
+	if *address != "" {
+		if v := e.envVar("CONTRACT_VERSION"); v != "" && v != record.ContractVersion {
+			return usageError(e, "CONTRACT_VERSION must be v1")
+		}
+		client, err := muster.NewHTTP(*address, *tokenFile)
+		if err != nil {
+			return usageError(e, "the address given to -muster must be a plain http or https URL")
+		}
+		queue = client
+	} else {
+		data, err := os.ReadFile(*standin)
+		if err != nil {
+			return usageError(e, "cannot read the stand-in file")
+		}
+		seed, err := muster.ParseSeed(data)
+		if err != nil {
+			return usageError(e, "the stand-in file is not a usable seed")
+		}
+		s, err := muster.NewStandIn(seed, e.now)
+		if err != nil {
+			return usageError(e, "the stand-in file is not a usable seed")
+		}
+		queue, snapshot = s, s.Snapshot
 	}
 
 	w := &worker.Worker{
@@ -382,9 +495,10 @@ func cmdRun(e env, st *store.Store, args []string) int {
 		case <-timer.C:
 		}
 	}
-	if *ticks > 0 {
-		// A bounded run is for trying things out: show where it ended.
-		printJSON(e.stdout, queue.Snapshot(), true)
+	if snapshot != nil {
+		// A bounded run against the stand-in is for trying things out: show
+		// where it ended.
+		printJSON(e.stdout, snapshot(), true)
 	}
 	return exitOK
 }

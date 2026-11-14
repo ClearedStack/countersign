@@ -1,11 +1,12 @@
 // Package item describes what Countersign holds for the owner: scored and
-// screened-out candidates, and pending edit proposals. It checks an item
+// screened_out candidates, and pending edit proposals. It checks an item
 // arriving from Muster and holds the table of moves the owner may make.
 //
 // Everything here is a pure function of its input.
 package item
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -14,28 +15,32 @@ import (
 	"github.com/ClearedStack/countersign/internal/strictjson"
 )
 
-// Kind is what sort of item this is.
+// Kind is what sort of step this is. The values are Muster's: a candidate
+// tool is an "item" and an edit proposal is a "proposal".
 type Kind string
 
 const (
-	Candidate Kind = "candidate"
+	Candidate Kind = "item"
 	Proposal  Kind = "proposal"
 )
 
-// State is an item's state. The candidate states are the ones the platform's
-// item lifecycle names. Declined is provisional: the specification says a
-// declined proposal is logged and does not give the state a name.
+// State is an item's or proposal's state in Muster's contract.
 type State string
 
 const (
-	Scored          State = "scored"
-	ScreenedOut     State = "screened-out"
+	Discovered      State = "discovered"
+	Recorded        State = "recorded"
 	Observed        State = "observed"
+	ScreenedOut     State = "screened_out"
+	Scored          State = "scored"
 	Approved        State = "approved"
+	Building        State = "building"
+	Live            State = "live"
+	Parked          State = "parked"
 	Linked          State = "linked"
 	Merged          State = "merged"
-	Parked          State = "parked"
 	Rejected        State = "rejected"
+	Retired         State = "retired"
 	NeedsSubtool    State = "needs_subtool"
 	PendingApproval State = "pending_approval"
 	Declined        State = "declined"
@@ -133,15 +138,35 @@ func Outcomes(kind Kind, state State) []Outcome {
 	return out
 }
 
-// Limits. A proposal's 4 KB is read as 4096 bytes of its body.
+// Limits. A proposal's 4 KB is read as 4096 bytes of its change and reason.
 const (
-	MaxPayload  = 32 << 10 // one item or decision, as received
-	MaxLine     = 256      // a title, a target, a tool, a parent
-	MaxText     = 4096     // a reason, a blocker
-	MaxProposal = 4096     // the body of an edit proposal
+	MaxPayload  = 32 << 10 // one item or decision, as typed or stored
+	MaxLine     = 256      // a target, a tool, a parent, a repository, a file
+	MaxTitle    = 512      // what a candidate does, in one sentence
+	MaxReason   = 2000     // a decision reason, which Logbook limits to 2000 bytes
+	MaxText     = 4096     // a blocker or held screening note
+	MaxProposal = 4096     // the change and reason of an edit proposal, together
 	MinScore    = 20
 	MaxScore    = 100
 )
+
+// Identifiers are Muster's: PA- for a candidate and EP- for an edit
+// proposal, then four digits, or five to nine digits with no leading zero.
+var (
+	candidateID = regexp.MustCompile(`^PA-([0-9]{4}|[1-9][0-9]{4,8})$`)
+	proposalID  = regexp.MustCompile(`^EP-([0-9]{4}|[1-9][0-9]{4,8})$`)
+)
+
+// ValidID reports whether id has the form Muster gives that kind of item.
+func ValidID(kind Kind, id string) bool {
+	switch kind {
+	case Candidate:
+		return candidateID.MatchString(id)
+	case Proposal:
+		return proposalID.MatchString(id)
+	}
+	return false
+}
 
 // Item is one thing waiting for the owner.
 type Item struct {
@@ -150,16 +175,20 @@ type Item struct {
 	State State  `json:"state"`
 	Lane  Lane   `json:"lane"`
 
-	// Candidates.
+	// Candidates. Title is what the tool does, when an earlier worker said.
 	Title          string `json:"title,omitempty"`
 	Score          *int   `json:"score,omitempty"`
 	Recommendation State  `json:"recommendation,omitempty"`
+	SplitFlag      bool   `json:"split_flag,omitempty"`
 	ScreenReason   string `json:"screen_reason,omitempty"`
 
-	// Edit proposals.
-	Type   string `json:"type,omitempty"`
-	Target string `json:"target,omitempty"`
-	Body   string `json:"body,omitempty"`
+	// Edit proposals. The names are the ones Muster uses.
+	Target     string `json:"target,omitempty"`
+	Repository string `json:"repository,omitempty"`
+	File       string `json:"file,omitempty"`
+	EditKind   string `json:"edit_kind,omitempty"`
+	Change     string `json:"change,omitempty"`
+	Reason     string `json:"reason,omitempty"`
 }
 
 // Blank reports whether s holds nothing but white space.
@@ -187,37 +216,37 @@ func validText(s string, max int, multiline bool) bool {
 	return true
 }
 
-// Parse checks one item as it arrives. leaseID is the identifier the lease
-// was issued under, or empty when there is no lease. The result is the item,
-// or the one rule that refused or paused it. Broken data (E_PARSE) is
-// reported ahead of unfamiliar data (E_NEEDS_SUBTOOL).
-func Parse(leaseID string, payload []byte) (Item, *rule.Error) {
-	ref := ""
-	if rule.SafeID(leaseID) {
-		ref = leaseID
-	}
-	fail := func(id rule.ID) (Item, *rule.Error) { return Item{}, rule.Fail(id, ref) }
-
-	if leaseID != "" && ref == "" {
-		return fail(rule.IntakeIDInvalid)
-	}
+// Parse reads one item written as JSON in the form Countersign stores, and
+// checks it.
+func Parse(payload []byte) (Item, *rule.Error) {
 	if len(payload) > MaxPayload {
-		return fail(rule.IntakePayloadTooLarge)
+		return Item{}, rule.Fail(rule.IntakePayloadTooLarge, "")
 	}
 	var it Item
 	if err := strictjson.Decode(payload, &it); err != nil {
-		return fail(rule.IntakeMalformed)
+		return Item{}, rule.Fail(rule.IntakeMalformed, "")
 	}
+	if perr := Check(it); perr != nil {
+		return Item{}, perr
+	}
+	return it, nil
+}
+
+// Check applies every rule for an arriving item. The result is nil, or the
+// one rule that refuses or pauses the item. Broken data (E_PARSE) is
+// reported ahead of unfamiliar data (E_NEEDS_SUBTOOL).
+func Check(it Item) *rule.Error {
+	ref := ""
+	if rule.SafeID(it.ID) {
+		ref = it.ID
+	}
+	fail := func(id rule.ID) *rule.Error { return rule.Fail(id, ref) }
+
 	if it.ID == "" {
 		return fail(rule.IntakeFieldMissing)
 	}
-	if !rule.SafeID(it.ID) {
-		return fail(rule.IntakeIDInvalid)
-	}
 	if ref == "" {
-		ref = it.ID
-	} else if it.ID != ref {
-		return fail(rule.IntakeIDMismatch)
+		return fail(rule.IntakeIDInvalid)
 	}
 	if it.Kind == "" || it.State == "" || it.Lane == "" {
 		return fail(rule.IntakeFieldMissing)
@@ -230,15 +259,18 @@ func Parse(leaseID string, payload []byte) (Item, *rule.Error) {
 		}
 	}
 
+	proposalFields := it.Target != "" || it.Repository != "" || it.File != "" || it.EditKind != "" || it.Change != "" || it.Reason != ""
+	scoreFields := it.Score != nil || it.Recommendation != "" || it.SplitFlag || it.ScreenReason != ""
+
 	switch it.Kind {
 	case Candidate:
-		if it.Type != "" || it.Target != "" || it.Body != "" {
+		if !ValidID(Candidate, it.ID) {
+			return fail(rule.IntakeIDInvalid)
+		}
+		if proposalFields {
 			return fail(rule.IntakeFieldUnexpected)
 		}
-		if Blank(it.Title) {
-			return fail(rule.IntakeFieldMissing)
-		}
-		if !ValidLine(it.Title, MaxLine) || !ValidText(it.ScreenReason, MaxText) {
+		if !ValidLine(it.Title, MaxTitle) || !ValidText(it.ScreenReason, MaxText) {
 			return fail(rule.IntakeTextInvalid)
 		}
 		switch it.State {
@@ -258,7 +290,7 @@ func Parse(leaseID string, payload []byte) (Item, *rule.Error) {
 				note(rule.IntakeRecommendationUnfamiliar)
 			}
 		case ScreenedOut:
-			if it.Score != nil || it.Recommendation != "" {
+			if it.Score != nil || it.Recommendation != "" || it.SplitFlag {
 				return fail(rule.IntakeFieldUnexpected)
 			}
 			if Blank(it.ScreenReason) {
@@ -268,25 +300,29 @@ func Parse(leaseID string, payload []byte) (Item, *rule.Error) {
 			note(rule.IntakeStateUnfamiliar)
 		}
 	case Proposal:
-		if it.Title != "" || it.Score != nil || it.Recommendation != "" || it.ScreenReason != "" {
+		if !ValidID(Proposal, it.ID) {
+			return fail(rule.IntakeIDInvalid)
+		}
+		if it.Title != "" || scoreFields {
 			return fail(rule.IntakeFieldUnexpected)
 		}
-		if it.Type == "" || Blank(it.Target) || Blank(it.Body) {
+		if it.EditKind == "" || Blank(it.Target) || Blank(it.Change) {
 			return fail(rule.IntakeFieldMissing)
 		}
-		if len(it.Body) > MaxProposal {
+		if len(it.Change)+len(it.Reason) > MaxProposal {
 			return fail(rule.IntakeProposalTooLarge)
 		}
-		if !ValidLine(it.Target, MaxLine) || !ValidText(it.Body, MaxProposal) {
+		if !ValidLine(it.Target, MaxLine) || !ValidLine(it.Repository, MaxLine) || !ValidLine(it.File, MaxLine) ||
+			!ValidText(it.Change, MaxProposal) || !ValidText(it.Reason, MaxProposal) {
 			return fail(rule.IntakeTextInvalid)
 		}
 		if it.State != PendingApproval {
 			note(rule.IntakeStateUnfamiliar)
 		}
-		switch it.Type {
+		switch it.EditKind {
 		case "DATA", "CONFIG", "ISSUE":
 		default:
-			note(rule.IntakeProposalTypeUnfamiliar)
+			note(rule.IntakeEditKindUnfamiliar)
 		}
 	default:
 		return fail(rule.IntakeKindUnfamiliar)
@@ -300,5 +336,5 @@ func Parse(leaseID string, payload []byte) (Item, *rule.Error) {
 	if unfamiliar != "" {
 		return fail(unfamiliar)
 	}
-	return it, nil
+	return nil
 }

@@ -89,6 +89,7 @@
     {
       "seq": 1,
       "status": "refused",
+      "lease": "EP-0070.1.1",
       "fingerprint": "419f024f48b3dbd4",
       "record": {
         "contract": "v1",
@@ -107,6 +108,7 @@
     {
       "seq": 2,
       "status": "acknowledged",
+      "lease": "EP-0071.2.1",
       "record": {
         "contract": "v1",
         "call": "complete",
@@ -139,17 +141,23 @@
     ],
     "ledger": [
       {
-        "contract": "v1",
         "call": "complete",
-        "id": "6f865cdc002eab9a2ddb9bddb48e3c9b",
-        "worker": "countersign",
-        "item": "EP-0071",
-        "at": "2026-01-05T10:00:00Z",
-        "kind": "proposal",
-        "outcome": "approve",
-        "from": "pending_approval",
-        "to": "approved",
-        "lane": "urgent"
+        "lease": "EP-0071.2.1",
+        "id": "EP-0071",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "6f865cdc002eab9a2ddb9bddb48e3c9b",
+          "worker": "countersign",
+          "item": "EP-0071",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "proposal",
+          "outcome": "approve",
+          "from": "pending_approval",
+          "to": "approved",
+          "lane": "urgent"
+        }
       }
     ],
     "dispatched": [

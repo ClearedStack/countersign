@@ -1,0 +1,16 @@
+{
+  "rule": "intake.field_missing",
+  "code": "E_PARSE",
+  "error": "E_PARSE intake.field_missing EP-0001: the item lacks something its kind and state require [fp 39f2025cda8560b6]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "9f557502bf6e6c00dfe5a313c155cb7d",
+    "worker": "countersign",
+    "item": "EP-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.field_missing",
+    "fingerprint": "39f2025cda8560b6"
+  }
+}

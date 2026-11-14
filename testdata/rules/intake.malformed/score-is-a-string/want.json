@@ -1,5 +1,16 @@
 {
   "rule": "intake.malformed",
   "code": "E_PARSE",
-  "error": "E_PARSE intake.malformed: the item is not one well-formed JSON object of the expected shape [fp 4f58517738585dd5]"
+  "error": "E_PARSE intake.malformed PA-0001: the item or lease is not one well-formed JSON object of the expected shape [fp 669e8505d4123fa8]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "3685569a3b4a237ffef818f2575e3159",
+    "worker": "countersign",
+    "item": "PA-0001",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.malformed",
+    "fingerprint": "669e8505d4123fa8"
+  }
 }

@@ -1,0 +1,9 @@
+{
+  "id": "PA-0002",
+  "kind": "item",
+  "state": "screened_out",
+  "lane": "normal",
+  "title": "Draft, price and submit a whole sample bid",
+  "screen_reason": "one_job: It does three jobs, not one.",
+  "score": 40
+}

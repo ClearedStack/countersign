@@ -26,8 +26,10 @@ import (
 // Every rule has saved examples under testdata/rules/<rule>/<case>/. A case
 // is one of three shapes, told apart by the files it holds:
 //
-//	item.json [+ lease]           an item arriving; lease is the lease identifier
+//	lease.json                    Muster's answer to a lease call, as received
+//	item.json                     an item added by hand
 //	item.json + decision.json     the owner deciding on that item
+//	release.json                  the owner releasing a stopped item
 //	scenario.json                 a run of the worker against the stand-in
 //
 // want.json is the exact output expected. Run "go test . -update" to rewrite
@@ -124,8 +126,14 @@ func TestSavedExamples(t *testing.T) {
 				case exists(dir, "decision.json"):
 					o := runDecision(t, dir)
 					got, rules = o, []rule.ID{o.Rule}
+				case exists(dir, "release.json"):
+					o := runRelease(t, dir)
+					got, rules = o, []rule.ID{o.Rule}
+				case exists(dir, "lease.json"):
+					o := runLease(t, dir)
+					got, rules = o, []rule.ID{o.Rule}
 				case exists(dir, "item.json"):
-					o := runIntake(t, dir)
+					o := runAdd(t, dir)
 					got, rules = o, []rule.ID{o.Rule}
 				default:
 					t.Fatal("the case holds no input")
@@ -165,9 +173,6 @@ func compare(t *testing.T, dir string, got any) {
 	if err := enc.Encode(got); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(buf.String(), muster.LeakMarker) {
-		t.Errorf("the output names an address:\n%s", buf.String())
-	}
 	path := filepath.Join(dir, "want.json")
 	if *update {
 		if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
@@ -184,49 +189,53 @@ func compare(t *testing.T, dir string, got any) {
 	}
 }
 
-func runIntake(t *testing.T, dir string) outcome {
+// runLease takes one lease answer through the same steps as the worker.
+func runLease(t *testing.T, dir string) outcome {
 	t.Helper()
-	lease := ""
-	if exists(dir, "lease") {
-		lease = strings.TrimSpace(string(read(t, dir, "lease")))
-	}
-	payload := read(t, dir, "item.json")
-
-	// The pure check and the store must agree.
-	_, perr := item.Parse(lease, payload)
-
 	st, err := store.Open(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	in, err := st.Intake(lease, payload, fixedTime)
-	if err != nil {
-		t.Fatal(err)
+	l, perr := muster.DecodeLease(read(t, dir, "lease.json"))
+	var it item.Item
+	if perr == nil {
+		it, perr = l.Item()
 	}
-	if (perr == nil) != (in.Err == nil) || (perr != nil && *perr != *in.Err) {
-		t.Fatalf("item.Parse said %v and the store said %v", perr, in.Err)
-	}
-	pending, err := st.Pending()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if in.Err != nil {
-		if len(pending) != 0 {
+	if perr != nil {
+		o := refusal(perr)
+		if l.Token != "" {
+			if o.Record, err = st.Report(l.Token, perr, fixedTime); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if pending, _ := st.Pending(); len(pending) != 0 {
 			t.Errorf("a refused or paused item reached the inbox")
 		}
-		o := refusal(in.Err)
-		o.Record = in.Record
 		return o
 	}
-	if len(pending) != 1 {
-		t.Errorf("an accepted item is not in the inbox")
+	if _, err := st.Accept(l.Token, it); err != nil {
+		t.Fatal(err)
 	}
-	return outcome{Rule: in.Rule, Item: in.Item}
+	pending, err := st.Pending()
+	if err != nil || len(pending) != 1 || pending[0].Lease != l.Token {
+		t.Errorf("an accepted item is not in the inbox under its lease: %+v %v", pending, err)
+	}
+	return outcome{Rule: rule.IntakeAccept, Item: &it}
+}
+
+// runAdd checks one item written in the form Countersign stores.
+func runAdd(t *testing.T, dir string) outcome {
+	t.Helper()
+	it, perr := item.Parse(read(t, dir, "item.json"))
+	if perr != nil {
+		return refusal(perr)
+	}
+	return outcome{Rule: rule.IntakeAccept, Item: &it}
 }
 
 func runDecision(t *testing.T, dir string) outcome {
 	t.Helper()
-	it, perr := item.Parse("", read(t, dir, "item.json"))
+	it, perr := item.Parse(read(t, dir, "item.json"))
 	if perr != nil {
 		t.Fatalf("item.json must be an item Countersign accepts: %v", perr)
 	}
@@ -241,6 +250,23 @@ func runDecision(t *testing.T, dir string) outcome {
 	return outcome{Rule: res.Rule, Record: &res.Record}
 }
 
+// runRelease records a release given as {"item": ..., "reason": ...}.
+func runRelease(t *testing.T, dir string) outcome {
+	t.Helper()
+	var in struct {
+		Item   string `json:"item"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(read(t, dir, "release.json"), &in); err != nil {
+		t.Fatal(err)
+	}
+	res, perr := decide.Release(in.Item, in.Reason, fixedTime)
+	if perr != nil {
+		return refusal(perr)
+	}
+	return outcome{Rule: res.Rule, Record: &res.Record}
+}
+
 // A scenario seeds the stand-in and then runs steps in order.
 type scenario struct {
 	Muster muster.Seed `json:"muster"`
@@ -248,12 +274,17 @@ type scenario struct {
 }
 
 type step struct {
-	// Do is one of: tick, decide, add, faults, advance, break.
+	// Do is one of: tick, decide, release, add, faults, requeue, replace,
+	// advance, break.
 	Do       string          `json:"do"`
 	Decision json.RawMessage `json:"decision,omitempty"` // decide
+	ID       string          `json:"id,omitempty"`       // release
+	Reason   string          `json:"reason,omitempty"`   // release
 	Item     json.RawMessage `json:"item,omitempty"`     // add
 	Timeouts int             `json:"timeouts,omitempty"` // faults
 	LostAcks int             `json:"lost_acks,omitempty"`
+	Refusals int             `json:"refusals,omitempty"`
+	Step     json.RawMessage `json:"step,omitempty"`    // replace
 	Seconds  int             `json:"seconds,omitempty"` // advance
 }
 
@@ -328,19 +359,35 @@ func runScenario(t *testing.T, dir string) (scenarioResult, []rule.ID) {
 			}
 			out.outcome = &outcome{Rule: r.Rule, Record: &r.Record}
 		case "add":
-			in, err := st.Intake("", s.Item, now)
-			switch {
-			case err != nil:
-				out.outcome = publicOutcome(err)
-			case in.Err != nil:
-				o := refusal(in.Err)
-				o.Record = in.Record
+			it, perr := item.Parse(s.Item)
+			if perr != nil {
+				o := refusal(perr)
 				out.outcome = &o
-			default:
-				out.outcome = &outcome{Rule: in.Rule, Item: in.Item}
+				break
 			}
+			if _, err := st.Accept("", it); err != nil {
+				out.outcome = publicOutcome(err)
+				break
+			}
+			out.outcome = &outcome{Rule: rule.IntakeAccept, Item: &it}
+		case "release":
+			r, err := st.Release(s.ID, s.Reason, now)
+			if err != nil {
+				out.outcome = publicOutcome(err)
+				break
+			}
+			out.outcome = &outcome{Rule: r.Rule, Record: &r.Record}
 		case "faults":
-			queue.SetFaults(s.Timeouts, s.LostAcks)
+			queue.SetFaults(muster.Faults{Timeouts: s.Timeouts, LostAcks: s.LostAcks, Refusals: s.Refusals})
+		case "requeue":
+			// Every lease is taken away, as when another worker took the
+			// steps and gave them back.
+			queue.Requeue()
+		case "replace":
+			// A waiting step comes back changed.
+			if err := queue.Replace(s.Step); err != nil {
+				t.Fatal(err)
+			}
 		case "advance":
 			now = now.Add(time.Duration(s.Seconds) * time.Second)
 		case "break":

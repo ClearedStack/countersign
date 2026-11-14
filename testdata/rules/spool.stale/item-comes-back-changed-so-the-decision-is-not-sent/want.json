@@ -1,0 +1,172 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0078"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "8b93bdbfe2beb3deac3d81ab87e91922",
+        "worker": "countersign",
+        "item": "PA-0078",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "requeue"
+    },
+    {
+      "do": "replace"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.lease_not_held",
+          "code": "E_PARSE",
+          "item": "PA-0078",
+          "seq": 1,
+          "fingerprint": "36e2291a41fe03c2"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.stale",
+          "code": "E_PARSE",
+          "item": "PA-0078",
+          "fingerprint": "cf3d8035aaf9194f"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0078"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.override",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "895b53d06346a78c6c5a53415e269bc2",
+        "worker": "countersign",
+        "item": "PA-0078",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0078",
+          "seq": 2
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "lease": "PA-0078.1.1",
+      "fingerprint": "cf3d8035aaf9194f",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "8b93bdbfe2beb3deac3d81ab87e91922",
+        "worker": "countersign",
+        "item": "PA-0078",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "lease": "PA-0078.2.2",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "895b53d06346a78c6c5a53415e269bc2",
+        "worker": "countersign",
+        "item": "PA-0078",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "override",
+        "from": "screened_out",
+        "to": "observed",
+        "lane": "normal",
+        "override": true,
+        "reason": "Reshaped to do one job."
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0078",
+        "state": "observed",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0078.2.2",
+        "id": "PA-0078",
+        "state": "observed",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "895b53d06346a78c6c5a53415e269bc2",
+          "worker": "countersign",
+          "item": "PA-0078",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "override",
+          "from": "screened_out",
+          "to": "observed",
+          "lane": "normal",
+          "override": true,
+          "reason": "Reshaped to do one job."
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

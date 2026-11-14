@@ -3,11 +3,11 @@
   "record": {
     "contract": "v1",
     "call": "complete",
-    "id": "7e38a5cb0f755dc60726ec623f30f11f",
+    "id": "05df07ad0b6810ee206833ed6b211836",
     "worker": "countersign",
     "item": "PA-0001",
     "at": "2026-01-05T10:00:00Z",
-    "kind": "candidate",
+    "kind": "item",
     "outcome": "reject",
     "from": "scored",
     "to": "rejected",

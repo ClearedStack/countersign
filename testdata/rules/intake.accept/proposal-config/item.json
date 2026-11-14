@@ -1,9 +1,0 @@
-{
-  "id": "EP-0002",
-  "kind": "proposal",
-  "state": "pending_approval",
-  "lane": "normal",
-  "type": "CONFIG",
-  "target": "workers/sample-worker/settings/retry-limit",
-  "body": "Raise the retry limit from 3 to 5. Three is too few for the sample feed."
-}

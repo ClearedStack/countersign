@@ -1,0 +1,12 @@
+{
+  "rule": "decision.release",
+  "record": {
+    "contract": "v1",
+    "call": "release",
+    "id": "9ceee1d4c3793d5150cf68e66434d00a",
+    "worker": "countersign",
+    "item": "PA-0003",
+    "at": "2026-01-05T10:00:00Z",
+    "reason": "The upstream result was corrected."
+  }
+}

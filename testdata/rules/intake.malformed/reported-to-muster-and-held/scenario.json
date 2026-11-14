@@ -1,0 +1,75 @@
+{
+  "muster": {
+    "ownership": [
+      "catalog/sample-rate-checker/description",
+      "workers/sample-worker/settings/retry-limit",
+      "workers/sample-worker/rules"
+    ],
+    "steps": [
+      {
+        "kind": "item",
+        "id": "PA-0020",
+        "state": "scored",
+        "lane": "normal",
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 82,
+            "recommendation": "build",
+            "split_flag": false
+          }
+        }
+      }
+    ],
+    "raw": [
+      {
+        "id": "PA-0021",
+        "body": "{\"lease\": \"{{lease}}\", \"kind\": \"item\", \"id\": \"PA-0021\", \"state\": \"scored\", \"lane\": \"normal\", \"attempt\": \"one\"}"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 20
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "advance",
+      "seconds": 600
+    },
+    {
+      "do": "tick"
+    }
+  ]
+}

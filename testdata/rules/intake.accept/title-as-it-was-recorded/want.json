@@ -1,0 +1,12 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0015",
+    "kind": "item",
+    "state": "scored",
+    "lane": "normal",
+    "title": "Made-up sample rate checker",
+    "score": 82,
+    "recommendation": "approved"
+  }
+}

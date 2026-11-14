@@ -29,9 +29,9 @@ func cs(t *testing.T, spool, stdin string, args ...string) result {
 }
 
 const (
-	scoredItem   = `{"id":"PA-0001","kind":"candidate","state":"scored","lane":"normal","title":"Check a sample labor rate against a made-up ceiling","score":82,"recommendation":"approved"}`
-	screenedItem = `{"id":"PA-0002","kind":"candidate","state":"screened-out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"Fails the one-job gate: it does three jobs, not one."}`
-	proposalItem = `{"id":"EP-0001","kind":"proposal","state":"pending_approval","lane":"urgent","type":"DATA","target":"catalog/sample-rate-checker/description","body":"The description says 'calender'.\nIt should say 'calendar'."}`
+	scoredItem   = `{"id":"PA-0001","kind":"item","state":"scored","lane":"normal","title":"Check a sample labor rate against a made-up ceiling","score":82,"recommendation":"approved"}`
+	screenedItem = `{"id":"PA-0002","kind":"item","state":"screened_out","lane":"normal","title":"Draft, price and submit a whole sample bid","screen_reason":"one_job: It does three jobs, not one."}`
+	proposalItem = `{"id":"EP-0001","kind":"proposal","state":"pending_approval","lane":"urgent","target":"catalog/sample-rate-checker/description","repository":"clearedstack.com","file":"src/data/sample-catalog.json","edit_kind":"DATA","change":"The description says 'calender'.\nIt should say 'calendar'.","reason":"A spelling mistake."}`
 )
 
 func TestOverrideIsRefusedWithoutAWrittenReason(t *testing.T) {
@@ -43,10 +43,10 @@ func TestOverrideIsRefusedWithoutAWrittenReason(t *testing.T) {
 	}
 
 	r := cs(t, spool, "", "list")
-	wantList := `ID       KIND       STATE             LANE    DETAIL                                               SUMMARY
-EP-0001  proposal   pending_approval  urgent  DATA catalog/sample-rate-checker/description         The description says 'calender'. It should say 'calendar'.
-PA-0001  candidate  scored            normal  score 82, recommended approved                       Check a sample labor rate against a made-up ceiling
-PA-0002  candidate  screened-out      normal  Fails the one-job gate: it does three jobs, not ...  Draft, price and submit a whole sample bid
+	wantList := `ID       KIND      STATE             LANE    DETAIL                                        SUMMARY
+EP-0001  proposal  pending_approval  urgent  DATA catalog/sample-rate-checker/description  The description says 'calender'. It should say 'calendar'.
+PA-0001  item      scored            normal  score 82, recommended approved                Check a sample labor rate against a made-up ceiling
+PA-0002  item      screened_out      normal  one_job: It does three jobs, not one.         Draft, price and submit a whole sample bid
 `
 	if r.code != exitOK || r.stdout != wantList {
 		t.Errorf("list:\n%s\nwant:\n%s", r.stdout, wantList)
@@ -86,7 +86,7 @@ PA-0002  candidate  screened-out      normal  Fails the one-job gate: it does th
 	if err := json.Unmarshal([]byte(r.stdout), &res); err != nil {
 		t.Fatal(err)
 	}
-	if res.Rule != "decision.override" || res.Record.From != "screened-out" || res.Record.To != "observed" ||
+	if res.Rule != "decision.override" || res.Record.From != "screened_out" || res.Record.To != "observed" ||
 		!res.Record.Override || res.Record.Reason != "Reshaped to do one job." || res.Record.At != "2026-01-05T10:00:00Z" {
 		t.Errorf("record: %+v", res)
 	}
@@ -127,16 +127,21 @@ func TestBrokenAndUnfamiliarItems(t *testing.T) {
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.malformed:") {
 		t.Errorf("broken: %+v", r)
 	}
-	r = cs(t, spool, strings.Replace(scoredItem, `"candidate"`, `"bundle"`, 1), "add")
+	r = cs(t, spool, strings.Replace(scoredItem, `"item"`, `"bundle"`, 1), "add")
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_NEEDS_SUBTOOL intake.kind_unfamiliar PA-0001:") {
 		t.Errorf("unfamiliar: %+v", r)
+	}
+	r = cs(t, spool, strings.Replace(scoredItem, `"PA-0001"`, `"PA-01"`, 1), "add")
+	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.id_invalid PA-01:") {
+		t.Errorf("identifier: %+v", r)
 	}
 	r = cs(t, spool, strings.Repeat("x", 40<<10), "add")
 	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE intake.payload_too_large:") {
 		t.Errorf("too large: %+v", r)
 	}
-	// The pause is spooled for Muster. Nothing reached the inbox.
-	if r = cs(t, spool, "", "log"); strings.Count(r.stdout, "\n") != 1 || !strings.Contains(r.stdout, `"call":"needs_subtool"`) {
+	// Nothing reached the inbox, and with no lease there is nothing to tell
+	// Muster.
+	if r = cs(t, spool, "", "log"); r.stdout != "" {
 		t.Errorf("log: %s", r.stdout)
 	}
 	if r = cs(t, spool, "", "list"); strings.Count(r.stdout, "\n") != 1 {
@@ -158,6 +163,9 @@ func TestUsage(t *testing.T) {
 		{"add", filepath.Join(spool, "no-such-file")},
 		{"run"},
 		{"run", "-standin", filepath.Join(spool, "no-such-file")},
+		{"run", "-standin", "x", "-muster", "http://muster.invalid"},
+		{"run", "-muster", "muster.invalid:8080"},
+		{"run", "-muster", "http://user:made-up@muster.invalid"},
 	} {
 		r := cs(t, spool, "", args...)
 		if r.code != exitUsage || r.stdout != "" {
@@ -212,8 +220,9 @@ func TestExampleSeedRuns(t *testing.T) {
 	for _, want := range []string{
 		`"rule":"lease.timeout","code":"E_TIMEOUT"`,
 		`"rule":"intake.accept","item":"PA-0001"`,
-		`"rule":"intake.kind_unfamiliar","code":"E_NEEDS_SUBTOOL","item":"PA-0004"`,
-		`"rule":"spool.acknowledged","item":"PA-0004","seq":1`,
+		`"rule":"intake.accept","item":"PA-0002"`,
+		`"rule":"intake.recommendation_unfamiliar","code":"E_NEEDS_SUBTOOL","item":"PA-0004"`,
+		`"rule":"spool.refused","code":"E_PARSE","item":"PA-0004","seq":1`,
 	} {
 		if !strings.Contains(r.stderr, want) {
 			t.Errorf("the worker log lacks %s:\n%s", want, r.stderr)
@@ -221,5 +230,248 @@ func TestExampleSeedRuns(t *testing.T) {
 	}
 	if r = cs(t, spool, "", "list"); strings.Count(r.stdout, "\n") != 5 {
 		t.Errorf("list:\n%s", r.stdout)
+	}
+}
+
+func TestHeldAndRelease(t *testing.T) {
+	spool := t.TempDir()
+	seed := filepath.Join(t.TempDir(), "seed.json")
+	// One item Assay scored without a total: broken, so Countersign stops it.
+	if err := os.WriteFile(seed, []byte(`{"steps":[
+		{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"recommendation":"build"}}},
+		{"kind":"item","id":"PA-0002","state":"scored","lane":"normal","results":{"assay":{"score":82,"recommendation":"build"}}}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := cs(t, spool, "", "run", "-standin", seed, "-interval", "1ms", "-ticks", "2"); r.code != exitOK ||
+		!strings.Contains(r.stderr, `"rule":"intake.field_missing","code":"E_PARSE","item":"PA-0001"`) ||
+		!strings.Contains(r.stderr, `"rule":"spool.acknowledged","item":"PA-0001","seq":1`) {
+		t.Fatalf("run: %+v", r)
+	}
+	r := cs(t, spool, "", "held")
+	want := "ID       STOPPED               RULE\nPA-0001  2026-01-05T10:00:00Z  intake.field_missing\n"
+	if r.code != exitOK || r.stdout != want {
+		t.Errorf("held:\n%s\nwant:\n%s", r.stdout, want)
+	}
+
+	for _, args := range [][]string{{"release", "EP-0001"}, {"release", "PA-01"}, {"release", "../x"}} {
+		if r := cs(t, spool, "", args...); r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE decision.malformed") {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	for _, args := range [][]string{{"release"}, {"release", "PA-0001", "PA-0002"}, {"release", "PA-0001", "-force"}} {
+		if r := cs(t, spool, "", args...); r.code != exitUsage {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	r = cs(t, spool, "", "release", "PA-0001", "-reason", "Assay's result was corrected.")
+	if r.code != exitOK || !strings.Contains(r.stdout, `"rule": "decision.release"`) || !strings.Contains(r.stdout, `"call": "release"`) {
+		t.Fatalf("release: %+v", r)
+	}
+	// A release that is waiting to be sent takes the item off the list.
+	if r = cs(t, spool, "", "held"); r.stdout != "ID  STOPPED  RULE\n" {
+		t.Errorf("held after the release: %q", r.stdout)
+	}
+	if r = cs(t, spool, "", "log"); strings.Count(r.stdout, "\n") != 2 || !strings.Contains(r.stdout, `"seq":2,"status":"waiting","record":{"contract":"v1","call":"release"`) {
+		t.Errorf("log:\n%s", r.stdout)
+	}
+}
+
+func TestEnvironmentVariables(t *testing.T) {
+	spool := t.TempDir()
+	runEnv := func(vars map[string]string, args ...string) result {
+		t.Helper()
+		var out, errb bytes.Buffer
+		e := env{
+			stdin:  strings.NewReader(""),
+			stdout: &out,
+			stderr: &errb,
+			now:    func() time.Time { return at },
+			getenv: func(k string) string { return vars[k] },
+		}
+		return result{run(args, e), out.String(), errb.String()}
+	}
+
+	// COUNTERSIGN_SPOOL selects the spool when -spool is not given.
+	var out, errb bytes.Buffer
+	code := run([]string{"add"}, env{
+		stdin:  strings.NewReader(scoredItem),
+		stdout: &out,
+		stderr: &errb,
+		now:    func() time.Time { return at },
+		getenv: func(k string) string {
+			if k == "COUNTERSIGN_SPOOL" {
+				return spool
+			}
+			return ""
+		},
+	})
+	if code != exitOK {
+		t.Fatalf("add via COUNTERSIGN_SPOOL: %d %s", code, errb.String())
+	}
+	if r := runEnv(map[string]string{"COUNTERSIGN_SPOOL": spool}, "list"); r.code != exitOK || !strings.Contains(r.stdout, "PA-0001") {
+		t.Errorf("list via COUNTERSIGN_SPOOL: %+v", r)
+	}
+
+	// CONTRACT_VERSION other than v1 is refused without echoing its value.
+	r := runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": spool,
+		"MUSTER_URL":        "http://127.0.0.1:1",
+		"CONTRACT_VERSION":  "secret-v2",
+	}, "run", "-ticks", "1")
+	if r.code != exitUsage || strings.Contains(r.stderr, "secret-v2") {
+		t.Errorf("bad CONTRACT_VERSION: %+v", r)
+	}
+
+	// MUSTER_URL + CONTRACT_VERSION=v1 runs one tick (unreachable Muster is E_TIMEOUT, exit 0).
+	r = runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": spool,
+		"MUSTER_URL":        "http://127.0.0.1:1",
+		"CONTRACT_VERSION":  "v1",
+	}, "run", "-interval", "1ms", "-ticks", "1")
+	if r.code != exitOK || !strings.Contains(r.stderr, `"code":"E_TIMEOUT"`) {
+		t.Errorf("run via MUSTER_URL: %+v", r)
+	}
+
+	// Explicit -standin still works when MUSTER_URL is set in the environment.
+	r = runEnv(map[string]string{
+		"COUNTERSIGN_SPOOL": t.TempDir(),
+		"MUSTER_URL":        "http://127.0.0.1:1",
+	}, "run", "-standin", "../../examples/standin.json", "-interval", "1ms", "-ticks", "1")
+	if r.code != exitOK {
+		t.Errorf("run -standin with MUSTER_URL set: %+v", r)
+	}
+}
+
+func TestReviewInteractiveWorkflow(t *testing.T) {
+	spool := t.TempDir()
+	if r := cs(t, spool, "", "review"); r.code != exitOK || r.stdout != "no items waiting.\n" {
+		t.Fatalf("empty review: %+v", r)
+	}
+
+	for _, it := range []string{scoredItem, screenedItem, proposalItem} {
+		if r := cs(t, spool, it, "add"); r.code != exitOK {
+			t.Fatalf("add: %+v", r)
+		}
+	}
+
+	// Step through EP-0001 (approve), PA-0001 (bad outcome, disallowed outcome,
+	// override missing reason, then valid park override), and PA-0002 (blank -> skip).
+	session := strings.Join([]string{
+		"approve",
+		"",
+		"maybe",
+		"override",
+		"park",
+		"Waiting on FAR update",
+		"   ",
+		"park",
+		"Waiting on FAR update",
+		"Hold until Q3 rule text lands.",
+		"",
+	}, "\n") + "\n"
+
+	r := cs(t, spool, session, "review")
+	if r.code != exitOK {
+		t.Fatalf("review failed: %+v", r)
+	}
+	for _, wantOut := range []string{
+		"[1/3] EP-0001  proposal  pending_approval  lane=urgent",
+		"recorded EP-0001: pending_approval -> approved (decision.proposal_approve)",
+		"[2/3] PA-0001  item  scored  lane=normal",
+		"recorded PA-0001: scored -> parked (decision.park) [override]",
+		"[3/3] PA-0002  item  screened_out  lane=normal",
+		"skipped PA-0002.",
+	} {
+		if !strings.Contains(r.stdout, wantOut) {
+			t.Errorf("review stdout missing %q:\n%s", wantOut, r.stdout)
+		}
+	}
+	for _, wantErr := range []string{
+		"E_PARSE decision.outcome_unknown PA-0001:",
+		"E_PARSE decision.outcome_not_allowed PA-0001:",
+		"E_PARSE decision.override_reason_missing PA-0001:",
+	} {
+		if !strings.Contains(r.stderr, wantErr) {
+			t.Errorf("review stderr missing %q:\n%s", wantErr, r.stderr)
+		}
+	}
+
+	// PA-0002 was skipped and must still be waiting; EOF mid-prompt must not record it.
+	r = cs(t, spool, "override\n", "review", "PA-0002")
+	if r.code != exitOK {
+		t.Fatalf("review EOF mid-item: %+v", r)
+	}
+	if r = cs(t, spool, "", "show", "PA-0002"); r.code != exitOK {
+		t.Fatalf("PA-0002 disappeared on EOF: %+v", r)
+	}
+
+	// CRLF line endings work cleanly when reviewing by explicit ID.
+	r = cs(t, spool, "override\r\nReshaped to do one job.\r\n", "review", "PA-0002")
+	if r.code != exitOK || !strings.Contains(r.stdout, "recorded PA-0002: screened_out -> observed (decision.override) [override]") {
+		t.Fatalf("review CRLF override: %+v", r)
+	}
+	if r = cs(t, spool, "", "review"); r.code != exitOK || r.stdout != "no items waiting.\n" {
+		t.Errorf("inbox should now be empty: %+v", r)
+	}
+}
+
+func TestReviewFiltersOutcomesAndBounds(t *testing.T) {
+	spool := t.TempDir()
+	items := []string{
+		`{"id":"PA-0010","kind":"item","state":"scored","lane":"urgent","title":"Link sample","score":65,"recommendation":"linked","split_flag":true}`,
+		`{"id":"PA-0011","kind":"item","state":"scored","lane":"normal","title":"Merge sample","score":70,"recommendation":"approved"}`,
+		`{"id":"PA-0012","kind":"item","state":"scored","lane":"backfill","title":"Reject sample","score":30,"recommendation":"rejected"}`,
+		proposalItem,
+	}
+	for _, it := range items {
+		if r := cs(t, spool, it, "add"); r.code != exitOK {
+			t.Fatalf("add: %+v", r)
+		}
+	}
+
+	// Usage and unknown-item checks.
+	for _, bad := range [][]string{
+		{"review", "-bogus"},
+		{"review", "-kind", "bundle"},
+		{"review", "-lane", "fast"},
+		{"review", "-kind", "item", "PA-0010"},
+	} {
+		if r := cs(t, spool, "", bad...); r.code != exitUsage {
+			t.Errorf("%v: want exitUsage, got %+v", bad, r)
+		}
+	}
+	if r := cs(t, spool, "", "review", "PA-9999"); r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE decision.item_unknown PA-9999:") {
+		t.Errorf("unknown id: %+v", r)
+	}
+
+	// Filter to urgent candidates only: sees PA-0010 (with split_flag), links it.
+	r := cs(t, spool, "link\nsample-existing-tool\n\n", "review", "-kind", "item", "-lane", "urgent")
+	if r.code != exitOK ||
+		!strings.Contains(r.stdout, "split_flag: true") ||
+		!strings.Contains(r.stdout, "recorded PA-0010: scored -> linked (decision.link)") {
+		t.Fatalf("urgent item review: %+v", r)
+	}
+
+	// Overlong input lines are bounded, refused with E_PARSE, and allow quit.
+	huge := strings.Repeat("a", 40<<10)
+	r = cs(t, spool, huge+"\nmerge\n"+huge+"\nreason\nquit\n", "review", "-kind", "item")
+	if r.code != exitOK ||
+		!strings.Contains(r.stderr, "E_PARSE decision.outcome_unknown PA-0011:") ||
+		!strings.Contains(r.stderr, "E_PARSE decision.text_invalid PA-0011:") {
+		t.Fatalf("overlong input handling: %+v", r)
+	}
+
+	// Complete PA-0011 (merge) and PA-0012 (reject) in one pass.
+	r = cs(t, spool, "merge\nsample-parent\nFold into parent calculator.\nreject\nLow score and duplicate scope.\n", "review", "-kind", "item")
+	if r.code != exitOK ||
+		!strings.Contains(r.stdout, "recorded PA-0011: scored -> merged (decision.merge) [override]") ||
+		!strings.Contains(r.stdout, "recorded PA-0012: scored -> rejected (decision.reject)") {
+		t.Fatalf("merge and reject review: %+v", r)
+	}
+
+	// Proposal EP-0001 was untouched by -kind item; decline it via -kind proposal.
+	r = cs(t, spool, "decline\n\n", "review", "-kind", "proposal")
+	if r.code != exitOK || !strings.Contains(r.stdout, "recorded EP-0001: pending_approval -> declined (decision.proposal_decline)") {
+		t.Fatalf("proposal decline review: %+v", r)
 	}
 }

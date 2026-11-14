@@ -1,5 +1,16 @@
 {
   "rule": "intake.field_missing",
   "code": "E_PARSE",
-  "error": "E_PARSE intake.field_missing: the item lacks a field its kind and state require [fp 4108c3dad81d57a7]"
+  "error": "E_PARSE intake.field_missing: the item lacks something its kind and state require [fp 4108c3dad81d57a7]",
+  "record": {
+    "contract": "v1",
+    "call": "fail",
+    "id": "92e8696f0e7e3f226430082c466c1e1d",
+    "worker": "countersign",
+    "item": "",
+    "at": "2026-01-05T10:00:00Z",
+    "code": "E_PARSE",
+    "rule": "intake.field_missing",
+    "fingerprint": "4108c3dad81d57a7"
+  }
 }

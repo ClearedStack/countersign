@@ -1,0 +1,11 @@
+{
+  "rule": "decision.release",
+  "record": {
+    "contract": "v1",
+    "call": "release",
+    "id": "30a2c572a6124e2da3edc810801578f0",
+    "worker": "countersign",
+    "item": "PA-10000",
+    "at": "2026-01-05T10:00:00Z"
+  }
+}

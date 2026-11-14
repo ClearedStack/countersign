@@ -5,77 +5,256 @@
       "workers/sample-worker/settings/retry-limit",
       "workers/sample-worker/rules"
     ],
-    "items": [
+    "steps": [
       {
+        "kind": "item",
         "id": "PA-0050",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 82,
+            "recommendation": "build",
+            "split_flag": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0051",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 60,
-        "recommendation": "parked"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 60,
+            "recommendation": "park",
+            "split_flag": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0052",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 41,
-        "recommendation": "rejected"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 41,
+            "recommendation": "reject",
+            "split_flag": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0053",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 88,
-        "recommendation": "linked"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 88,
+            "recommendation": "link",
+            "split_flag": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0054",
-        "kind": "candidate",
         "state": "scored",
         "lane": "normal",
-        "title": "Check a sample labor rate against a made-up ceiling",
-        "score": 82,
-        "recommendation": "approved"
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Check a sample labor rate against a made-up ceiling",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": true,
+                "reason": "It does one job."
+              }
+            },
+            "factors": {
+              "need": {
+                "rating": 4,
+                "weight": 4
+              },
+              "gap": {
+                "rating": 4,
+                "weight": 4
+              }
+            },
+            "score": 82,
+            "recommendation": "build",
+            "split_flag": false
+          }
+        }
       },
       {
+        "kind": "item",
         "id": "PA-0055",
-        "kind": "candidate",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "normal",
-        "title": "Draft, price and submit a whole sample bid",
-        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": false,
+                "reason": "It does three jobs, not one."
+              }
+            },
+            "factors": {}
+          }
+        }
       },
       {
+        "kind": "proposal",
         "id": "EP-0050",
-        "kind": "proposal",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "DATA",
-        "target": "catalog/sample-rate-checker/description",
-        "body": "The description says 'calender'. It should say 'calendar'."
+        "proposal": {
+          "target": "catalog/sample-rate-checker/description",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "DATA",
+          "change": "The description says 'calender'. It should say 'calendar'.",
+          "reason": "A spelling mistake."
+        }
       },
       {
-        "id": "EP-0051",
         "kind": "proposal",
+        "id": "EP-0051",
         "state": "pending_approval",
         "lane": "normal",
-        "type": "CONFIG",
-        "target": "workers/sample-worker/settings/retry-limit",
-        "body": "Raise the retry limit from 3 to 5."
+        "proposal": {
+          "target": "workers/sample-worker/settings/retry-limit",
+          "repository": "clearedstack.com",
+          "file": "src/data/sample-catalog.json",
+          "edit_kind": "CONFIG",
+          "change": "Raise the retry limit from 3 to 5.",
+          "reason": "A spelling mistake."
+        }
       }
     ]
   },

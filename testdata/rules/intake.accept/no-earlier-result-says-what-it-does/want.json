@@ -1,0 +1,11 @@
+{
+  "rule": "intake.accept",
+  "item": {
+    "id": "PA-0008",
+    "kind": "item",
+    "state": "scored",
+    "lane": "normal",
+    "score": 82,
+    "recommendation": "approved"
+  }
+}

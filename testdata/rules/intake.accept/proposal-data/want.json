@@ -5,8 +5,11 @@
     "kind": "proposal",
     "state": "pending_approval",
     "lane": "normal",
-    "type": "DATA",
     "target": "catalog/sample-rate-checker/description",
-    "body": "The description says 'calender'. It should say 'calendar'."
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "DATA",
+    "change": "The description says 'calender'. It should say 'calendar'.",
+    "reason": "A spelling mistake."
   }
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,11 +51,17 @@ const budget = 30 << 20
 const items = 256
 
 type sandbox struct {
-	spool, cwd, tmp, home, seed string
+	spool, cwd, tmp, home, token string
+	url                          string
+	muster                       *muster.StandIn
 }
 
-// newSandbox makes a spool and a seed of the largest edit proposals allowed,
-// with the first two calls to Muster failing.
+// madeUpToken is the bearer token the fake Muster accepts.
+const madeUpToken = "made-up-token-for-countersign"
+
+// newSandbox makes a spool, a token file and a fake Muster served over HTTP
+// from this test process. The fake holds n of the largest edit proposals
+// allowed, and does not answer its first two calls.
 func newSandbox(t *testing.T, n int) sandbox {
 	t.Helper()
 	root := t.TempDir()
@@ -63,29 +70,35 @@ func newSandbox(t *testing.T, n int) sandbox {
 		cwd:   filepath.Join(root, "cwd"),
 		tmp:   filepath.Join(root, "tmp"),
 		home:  filepath.Join(root, "home"),
-		seed:  filepath.Join(root, "seed.json"),
+		token: filepath.Join(root, "token"),
 	}
 	for _, d := range []string{sb.cwd, sb.tmp, sb.home} {
 		if err := os.Mkdir(d, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	seed := muster.Seed{Ownership: []string{"catalog/sample-rate-checker/description"}, Timeouts: 2}
-	body := strings.Repeat("Made-up text. ", 4096/14)
-	for i := 0; i < n; i++ {
-		b, _ := json.Marshal(map[string]string{
-			"id": fmt.Sprintf("EP-%04d", i+1), "kind": "proposal", "state": "pending_approval", "lane": "normal",
-			"type": "DATA", "target": "catalog/sample-rate-checker/description", "body": body,
-		})
-		seed.Items = append(seed.Items, b)
+	if err := os.WriteFile(sb.token, []byte(madeUpToken+"\n"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	b, err := json.Marshal(seed)
+	seed := muster.Seed{Ownership: []string{"catalog/sample-rate-checker/description"}, Timeouts: 2}
+	change := strings.Repeat("Made-up text. ", 4000/14)
+	for i := 0; i < n; i++ {
+		b, _ := json.Marshal(map[string]any{
+			"kind": "proposal", "id": fmt.Sprintf("EP-%04d", i+1), "state": "pending_approval", "lane": "normal",
+			"proposal": map[string]string{
+				"target": "catalog/sample-rate-checker/description", "repository": "clearedstack.com",
+				"file": "src/data/sample-catalog.json", "edit_kind": "DATA", "change": change, "reason": "A made-up reason.",
+			},
+		})
+		seed.Steps = append(seed.Steps, b)
+	}
+	s, err := muster.NewStandIn(seed, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(sb.seed, b, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	srv := httptest.NewServer(muster.NewFakeServer(s, madeUpToken))
+	t.Cleanup(srv.Close)
+	sb.url, sb.muster = srv.URL, s
 	return sb
 }
 
@@ -123,7 +136,7 @@ func peak(t *testing.T, pid int) int64 {
 // rule and gone quiet, reads its peak memory, and stops it.
 func (sb sandbox) worker(t *testing.T, rule string, want int) (int64, string) {
 	t.Helper()
-	cmd := sb.command("run", "-standin", sb.seed, "-interval", "5ms")
+	cmd := sb.command("run", "-muster", sb.url, "-token-file", sb.token, "-interval", "5ms")
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -230,8 +243,8 @@ func TestBuiltProgramStaysInItsBudgetAndItsSpool(t *testing.T) {
 	if strings.Count(log, `"code":"E_TIMEOUT"`) != 2 {
 		t.Errorf("want two timeouts before the inbox fills:\n%.1000s", log)
 	}
-	if strings.Contains(log, muster.LeakMarker) {
-		t.Errorf("the worker printed an address:\n%.1000s", log)
+	if host := strings.TrimPrefix(sb.url, "http://"); strings.Contains(log, host) || strings.Contains(log, madeUpToken) {
+		t.Errorf("the worker printed Muster's address or its token:\n%.1000s", log)
 	}
 
 	list, out := sb.listing(t, "list")
@@ -252,8 +265,8 @@ func TestBuiltProgramStaysInItsBudgetAndItsSpool(t *testing.T) {
 		t.Errorf("log shows %d waiting", strings.Count(out, `"status":"waiting"`))
 	}
 
-	// A fresh stand-in, as after Muster restarts: the whole spool is
-	// delivered, in order.
+	// A new worker, as after the pod restarts: the whole spool is delivered,
+	// in order.
 	drain, log := sb.worker(t, "spool.acknowledged", items)
 	next := 1
 	for _, line := range strings.Split(log, "\n") {
@@ -266,6 +279,11 @@ func TestBuiltProgramStaysInItsBudgetAndItsSpool(t *testing.T) {
 	}
 	if r := sb.run(t, "log"); strings.Count(r.stdout, `"status":"acknowledged"`) != 200 || strings.Contains(r.stdout, `"waiting"`) {
 		t.Errorf("after delivery the log should hold the newest 200 confirmed records")
+	}
+
+	snap := sb.muster.Snapshot()
+	if len(snap.Ledger) != items || len(snap.Dispatched) != items/2 {
+		t.Errorf("Muster recorded %d results and dispatched %d edits", len(snap.Ledger), len(snap.Dispatched))
 	}
 
 	// In the pod a command runs beside the worker, in the same budget.

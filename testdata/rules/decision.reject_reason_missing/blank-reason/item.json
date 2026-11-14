@@ -1,6 +1,6 @@
 {
   "id": "PA-0001",
-  "kind": "candidate",
+  "kind": "item",
   "state": "scored",
   "lane": "normal",
   "title": "Check a sample labor rate against a made-up ceiling",

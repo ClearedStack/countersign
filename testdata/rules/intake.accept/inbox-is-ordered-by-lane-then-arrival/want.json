@@ -67,7 +67,7 @@
       },
       {
         "id": "PA-0013",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "urgent",
         "status": "leased"
       }

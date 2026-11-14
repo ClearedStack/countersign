@@ -1,0 +1,100 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0074"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "335fa5db75ff0a17606990a9e0797fa2",
+        "worker": "countersign",
+        "item": "PA-0074",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.refused",
+          "code": "E_PARSE",
+          "item": "PA-0074",
+          "seq": 1,
+          "fingerprint": "10a3f946673ddb5c"
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:10:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0074"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0074"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "refused",
+      "lease": "PA-0074.1.1",
+      "fingerprint": "10a3f946673ddb5c",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "335fa5db75ff0a17606990a9e0797fa2",
+        "worker": "countersign",
+        "item": "PA-0074",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0074",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

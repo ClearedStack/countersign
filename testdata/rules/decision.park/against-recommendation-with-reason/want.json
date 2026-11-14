@@ -3,11 +3,11 @@
   "record": {
     "contract": "v1",
     "call": "complete",
-    "id": "c91466f7c9b9d036a2639e091d6ea7d1",
+    "id": "5c1ecb7fc764471cb2707c49d21024ee",
     "worker": "countersign",
     "item": "PA-0001",
     "at": "2026-01-05T10:00:00Z",
-    "kind": "candidate",
+    "kind": "item",
     "outcome": "park",
     "from": "scored",
     "to": "parked",

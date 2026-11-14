@@ -72,7 +72,7 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 //  5. the field the outcome needs is there: the tool for a link, the parent
 //     for a merge, the blocker for a park, the reason for a rejection;
 //  6. an override has a written reason. An override is reopening a
-//     screened-out item, or choosing against the recommendation.
+//     screened_out item, or choosing against the recommendation.
 func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 	fail := func(id rule.ID) (Result, *rule.Error) { return Result{}, rule.Fail(id, it.ID) }
 
@@ -83,7 +83,7 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 	if !ok {
 		return fail(rule.DecisionOutcomeNotAllowed)
 	}
-	if !item.ValidText(d.Reason, item.MaxText) || !item.ValidText(d.Blocker, item.MaxText) ||
+	if !item.ValidText(d.Reason, item.MaxReason) || !item.ValidText(d.Blocker, item.MaxText) ||
 		!item.ValidLine(d.Tool, item.MaxLine) || !item.ValidLine(d.Parent, item.MaxLine) {
 		return fail(rule.DecisionTextInvalid)
 	}
@@ -108,8 +108,8 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 		return fail(rule.DecisionRejectReasonMissing)
 	}
 
-	override := it.State == item.ScreenedOut ||
-		(it.State == item.Scored && to != it.Recommendation)
+	override := it.Kind == item.Candidate &&
+		(it.State == item.ScreenedOut || (it.State == item.Scored && to != it.Recommendation))
 	if override && reason == "" {
 		return fail(rule.DecisionOverrideReasonMissing)
 	}
@@ -138,4 +138,25 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 		Blocker:        blocker,
 	}.Seal()
 	return Result{Rule: accepted[it.Kind][d.Outcome], Record: rec}, nil
+}
+
+// Release writes down the owner's decision to let a stopped item run again.
+// A stopped item is one a worker failed with E_PARSE: Muster holds it in its
+// state and offers it to nobody until the owner releases it. The reason is
+// optional and stays in Countersign's own log, because Muster's release call
+// has nowhere to carry one.
+func Release(id, reason string, at time.Time) (Result, *rule.Error) {
+	if !item.ValidID(item.Candidate, id) {
+		return Result{}, rule.Fail(rule.DecisionMalformed, id)
+	}
+	if !item.ValidText(reason, item.MaxReason) {
+		return Result{}, rule.Fail(rule.DecisionTextInvalid, id)
+	}
+	rec := record.Record{
+		Call:   record.Release,
+		Item:   id,
+		At:     record.Stamp(at),
+		Reason: strings.TrimSpace(reason),
+	}.Seal()
+	return Result{Rule: rule.DecisionRelease, Record: rec}, nil
 }

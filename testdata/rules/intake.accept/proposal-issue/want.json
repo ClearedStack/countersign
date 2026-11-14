@@ -5,8 +5,10 @@
     "kind": "proposal",
     "state": "pending_approval",
     "lane": "normal",
-    "type": "ISSUE",
     "target": "workers/sample-worker/rules",
-    "body": "There is no rule for a sample page laid out as two columns."
+    "repository": "clearedstack.com",
+    "file": "src/data/sample-catalog.json",
+    "edit_kind": "ISSUE",
+    "change": "There is no rule for a sample page laid out as two columns."
   }
 }

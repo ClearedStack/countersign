@@ -18,9 +18,9 @@ func TestMovesAreExactlyTheSpecifiedOnes(t *testing.T) {
 		{Proposal, PendingApproval, Approve}: Approved,
 		{Proposal, PendingApproval, Decline}: Declined,
 	}
-	kinds := []Kind{Candidate, Proposal, "bundle"}
-	states := []State{Scored, ScreenedOut, Observed, Approved, Linked, Merged, Parked, Rejected, NeedsSubtool, PendingApproval, Declined, "galloping"}
-	outcomes := []Outcome{Approve, Link, Merge, Park, Reject, Override, Decline, "escalate"}
+	kinds := []Kind{Candidate, Proposal, "release", "bundle"}
+	states := []State{Discovered, Recorded, Observed, ScreenedOut, Scored, Approved, Building, Live, Parked, Linked, Merged, Rejected, Retired, NeedsSubtool, PendingApproval, Declined, "galloping"}
+	outcomes := []Outcome{Approve, Link, Merge, Park, Reject, Override, Decline, "release", "keep", "escalate"}
 	n := 0
 	for _, k := range kinds {
 		for _, s := range states {
@@ -68,6 +68,9 @@ func TestText(t *testing.T) {
 	}
 	if ValidText("abcd", 3) || !ValidText("abc", 3) {
 		t.Error("length limit is in bytes, inclusive")
+	}
+	if MaxReason != 2000 {
+		t.Errorf("MaxReason = %d, want 2000 to match Logbook", MaxReason)
 	}
 	if !Blank(" \n\t ") || Blank(" x ") {
 		t.Error("Blank")

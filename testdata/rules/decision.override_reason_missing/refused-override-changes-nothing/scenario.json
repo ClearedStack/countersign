@@ -5,14 +5,33 @@
       "workers/sample-worker/settings/retry-limit",
       "workers/sample-worker/rules"
     ],
-    "items": [
+    "steps": [
       {
+        "kind": "item",
         "id": "PA-0042",
-        "kind": "candidate",
-        "state": "screened-out",
+        "state": "screened_out",
         "lane": "normal",
-        "title": "Draft, price and submit a whole sample bid",
-        "screen_reason": "Fails the one-job gate: it does three jobs, not one."
+        "results": {
+          "sextant": {
+            "core_job": {
+              "value": "Draft, price and submit a whole sample bid",
+              "tier": "stated"
+            }
+          },
+          "assay": {
+            "profile": "pricing",
+            "gates": {
+              "public_source": {
+                "passed": true
+              },
+              "one_job": {
+                "passed": false,
+                "reason": "It does three jobs, not one."
+              }
+            },
+            "factors": {}
+          }
+        }
       }
     ]
   },
