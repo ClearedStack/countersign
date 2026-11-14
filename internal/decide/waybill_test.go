@@ -50,17 +50,28 @@ func edit(t *testing.T, key string, value any) []byte {
 	return b
 }
 
-// withLabel returns the calculator specification with a long label among its
-// vendor observations, written as it stands: encoding it with json would
+// withLabel returns the calculator specification with a long summary (a field
+// Waybill's record permits), written as it stands: encoding it with json would
 // already turn each "<" into six bytes.
 func withLabel(t *testing.T, label string) []byte {
 	t.Helper()
 	spec := string(readCalculator(t))
-	out := strings.Replace(spec, `"title": "prorated`, `"vendor_observations": {"label": "`+label+`"}, "title": "prorated`, 1)
+	out := strings.Replace(spec, `"title": "prorated`, `"summary": "`+label+`", "title": "prorated`, 1)
 	if out == spec {
 		t.Fatal("the calculator example has changed")
 	}
 	return []byte(out)
+}
+
+// padded returns the calculator specification, compact and otherwise valid,
+// with its summary padded so that the file is exactly n bytes long.
+func padded(t *testing.T, n int) []byte {
+	t.Helper()
+	base := edit(t, "summary", "")
+	if n < len(base) {
+		t.Fatalf("%d bytes is less than the specification itself", n)
+	}
+	return edit(t, "summary", strings.Repeat("a", n-len(base)))
 }
 
 func scored() item.Item {
@@ -96,7 +107,7 @@ func TestApplyWaybillAllowedOrRefusedPerState(t *testing.T) {
 		{name: "approve on a scored item", it: scored(),
 			d: decide.Decision{Item: "PA-0001", Outcome: item.Approve, Waybill: spec}, allowed: true},
 		{name: "override on a screened_out item", it: screenedOut(),
-			d: decide.Decision{Item: "PA-0002", Outcome: item.Override, Reason: "Reshaped.", Waybill: spec}, allowed: true},
+			d: decide.Decision{Item: "PA-0002", Outcome: item.Override, Reason: "Reshaped.", Waybill: spec}},
 		{name: "link", it: scored(),
 			d: decide.Decision{Item: "PA-0001", Outcome: item.Link, Tool: "t", Reason: "r", Waybill: spec}},
 		{name: "merge", it: scored(),
@@ -170,7 +181,6 @@ func TestApplyWaybillIsCarriedUnchanged(t *testing.T) {
 }
 
 func TestParseWaybill(t *testing.T) {
-	tooBig := append(append([]byte(`{"title":"`), bytes.Repeat([]byte("a"), item.MaxWaybill)...), `"}`...)
 	tests := []struct {
 		name string
 		file []byte
@@ -188,7 +198,8 @@ func TestParseWaybill(t *testing.T) {
 		{name: "text after the object", file: append(readCalculator(t), `{}`...)},
 		{name: "duplicate top-level key", file: []byte(strings.Replace(string(readCalculator(t)), `"title"`, `"tool_type": "calculator", "title"`, 1))},
 		{name: "duplicate nested key", file: []byte(strings.Replace(string(readCalculator(t)), `"decision": "build"`, `"decision": "build", "decision": "build"`, 1))},
-		{name: "oversized", file: tooBig},
+		{name: "exactly the size limit", file: padded(t, item.MaxWaybill), ok: true},
+		{name: "one byte over the size limit", file: padded(t, item.MaxWaybill+1)},
 		{name: "unknown top-level field", file: edit(t, "price", 1)},
 		{name: "unknown nested field", file: edit(t, "source", map[string]any{"product": "Sample Tool", "vendor": "Sample Maker", "url": "x"})},
 		{name: "title missing", file: edit(t, "title", nil)},
@@ -202,9 +213,13 @@ func TestParseWaybill(t *testing.T) {
 		{name: "authority empty", file: edit(t, "authority", []any{})},
 		{name: "authority without a url", file: edit(t, "authority", []any{map[string]any{"id": "a", "source": "FAR", "citation": "c", "title": "t"}})},
 		{name: "authority url not https", file: edit(t, "authority", []any{map[string]any{"id": "a", "source": "FAR", "citation": "c", "title": "t", "url": "http://www.acquisition.gov/far"}})},
-		{name: "forbidden observation key", file: edit(t, "vendor_observations", map[string]any{"raw_html": "<p>x</p>"})},
-		{name: "forbidden observation key nested deeply", file: edit(t, "vendor_observations", map[string]any{"a": []any{map[string]any{"screenshot": "s"}}})},
-		{name: "observations that carry no forbidden key", file: edit(t, "vendor_observations", map[string]any{"label": "x"}), ok: true},
+		{name: "forbidden observation key", file: edit(t, "tool", map[string]any{"raw_html": "<p>x</p>"})},
+		{name: "forbidden observation key nested deeply", file: edit(t, "tool", map[string]any{"a": []any{map[string]any{"screenshot": "s"}}})},
+		{name: "vendor observations with free text", file: edit(t, "vendor_observations", map[string]any{"notes": "anything"})},
+		{name: "vendor observations that are text", file: edit(t, "vendor_observations", "notes")},
+		{name: "vendor observations that are empty", file: edit(t, "vendor_observations", map[string]any{})},
+		{name: "vendor observations that are an empty list", file: edit(t, "vendor_observations", []any{})},
+		{name: "vendor observations that are null", file: edit(t, "vendor_observations", json.RawMessage("null")), ok: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

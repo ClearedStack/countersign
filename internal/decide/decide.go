@@ -75,8 +75,7 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 //  2. the outcome is allowed for an item of this kind in this state;
 //  3. every text field is safe text within its limit;
 //  4. no field is present that the outcome does not take: a specification
-//     file goes only with an approval of a scored item or an override of a
-//     screened_out one;
+//     file goes only with an approval of a scored item;
 //  5. the field the outcome needs is there: the tool for a link, the parent
 //     for a merge, the blocker for a park, the reason for a rejection;
 //  6. an override has a written reason. An override is reopening a
@@ -164,10 +163,10 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 }
 
 // takesWaybill reports whether a specification file may go with this outcome
-// on this item.
+// on this item: only an approval of a scored candidate, the one move Waybill
+// reads.
 func takesWaybill(it item.Item, o item.Outcome) bool {
-	return it.Kind == item.Candidate &&
-		((o == item.Approve && it.State == item.Scored) || (o == item.Override && it.State == item.ScreenedOut))
+	return it.Kind == item.Candidate && it.State == item.Scored && o == item.Approve
 }
 
 // fits reports whether the record, as it will be sent with complete, leaves

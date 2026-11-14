@@ -60,7 +60,9 @@ var forbiddenKeys = map[string]bool{
 // approval and returns it with white space removed and nothing else changed.
 // The file is one JSON object, within MaxWaybill bytes, in exactly the form
 // Waybill's parser accepts, with the parts Waybill requires: a title, a tool
-// type, a tool object and an authority with an https address. Whether the
+// type, a tool object and an authority with an https address. Vendor
+// observations are refused when present, because nothing in them may reach
+// the build specification. Whether the
 // specification is correct is for Waybill and the owner to judge, not
 // Countersign: nothing here reads the tool.
 //
@@ -82,6 +84,9 @@ func ParseWaybill(file []byte, id string, to item.State) (json.RawMessage, *rule
 	}
 	if (spec.ItemID != nil && *spec.ItemID != id) || (spec.State != nil && *spec.State != string(to)) {
 		return nil, fail
+	}
+	if v := spec.VendorObservations; len(v) > 0 && string(v) != "null" {
+		return nil, fail // free text about a vendor's product must not ride along
 	}
 	if spec.Title == "" || spec.ToolType == "" || len(spec.Tool) == 0 || spec.Tool[0] != '{' || !hasHTTPSAuthority(spec) {
 		return nil, fail
