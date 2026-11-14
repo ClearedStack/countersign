@@ -20,8 +20,8 @@ Countersign never decides anything. It holds each item until the owner decides, 
 
 ## What works today
 
-- **A lease loop against Muster.** Every 20 seconds the worker sends what is in its spool, sends a heartbeat for every lease it holds, and leases until Muster answers that there is nothing more. It speaks Muster's [contract v1](https://github.com/ClearedStack/muster/blob/claude/repo-build-prompt-1csgx6/contract/v1/CONTRACT.md): five calls, JSON over HTTP, the pod's ServiceAccount token as a bearer token.
-- **An inbox on disk.** Scored items, `screened_out` items, pending edit proposals and held items are checked on arrival and kept for the owner, urgent lane first, then normal, then backfill, in order of arrival.
+- **A lease loop against Muster.** Every 20 seconds the worker sends what is in its spool, sends a heartbeat for every lease it holds, and leases until Muster answers that there is nothing more. It speaks Muster's [contract v1](https://github.com/ClearedStack/muster/blob/claude/repo-build-prompt-1csgx6/contract/v1/CONTRACT.md): the five worker calls and the release call, JSON over HTTP, the pod's ServiceAccount token as a bearer token.
+- **An inbox on disk.** Scored items, `screened_out` items and pending edit proposals are checked on arrival and kept for the owner, urgent lane first, then normal, then backfill, in order of arrival.
 - **The allowed outcomes, and no others.**
 
   | Step | Outcome | Moves it to | Must come with |
@@ -34,12 +34,13 @@ Countersign never decides anything. It holds each item until the owner decides, 
   | `screened_out` item | `override` | `observed` | a reason |
   | Edit proposal | `approve` | `approved`, on the `urgent` lane | |
   | Edit proposal | `decline` | `declined` | |
-  | Held item | `release` | the same state; it runs again | |
-  | Held item | `keep` | the same state; it stays held | |
 
 - **An override is refused without a written reason.** An override is reopening a `screened_out` item, or choosing an outcome other than the one the score recommends. A blank reason counts as none. A refused decision changes nothing.
-- **Held items.** When any worker stops an item with `E_PARSE`, Muster holds it and gives Countersign a release step. The owner releases it to run again or keeps it held.
-- **A spool.** Each decision is written to disk before the item leaves the inbox. It leaves the spool as delivered only when Muster answers `200`. Results are sent oldest first. If Muster does not answer, the one at the front waits and everything behind it waits too. If Muster refuses one (`400`, `409`, `413`), it is set aside in the log, marked refused, and the item stays as it was.
+- **Releasing a stopped item.** When a worker stops an item with `E_PARSE`, Muster holds it until the owner releases it. `countersign release ID` sends that decision with Muster's release call, and `countersign held` lists the items Countersign itself stopped.
+- **A spool.** Each decision is written to disk before the item leaves the inbox. It leaves the spool as delivered only when Muster answers `200`. Results are sent oldest first.
+  - **Try again** (`429`, any `5xx`, no answer): the result at the front waits, and everything behind it waits too.
+  - **Lease lost** (`409 lease_not_held`): the decision is kept and goes out again under the new lease when Muster offers the item again. The owner is not asked twice.
+  - **Refused** (any other status from `400` to `422`): the result is set aside in the log, marked refused, and the item stays as it was.
 - **Three public error codes and nothing else.** `E_TIMEOUT`, `E_PARSE` and `E_NEEDS_SUBTOOL`. An error is a code, a rule, an item identifier, a fixed sentence and a fingerprint. It never carries a path, a host name, an address, a token or the text of an underlying failure.
 - **Stop instead of guessing.** A leased step that is well-formed but unfamiliar (a kind, state, recommendation, kind of edit, lane or field with no rule) is not shown to the owner. Countersign asks Muster to pause it, and the rest carry on. A broken one is reported with `fail` and `E_PARSE`.
 - **A careful client.** The token is read afresh for every call and no call is made without one. No redirect is followed, so the token cannot be carried to another host. No proxy from the environment is used. Answers are read up to a fixed size.
@@ -89,6 +90,8 @@ In another terminal, be the owner:
 ./countersign -spool ./spool decide PA-0001 approve
 ./countersign -spool ./spool decide EP-0001 approve
 ./countersign -spool ./spool log               # each result: waiting, acknowledged or refused
+./countersign -spool ./spool held              # items Countersign stopped with E_PARSE
+./countersign -spool ./spool release PA-0009   # let a stopped item run again
 ```
 
 Within two seconds the first terminal logs `spool.acknowledged` for each decision. The stand-in lives in the memory of the `run` command, so stopping it forgets the leases. The spool is on disk and survives.
@@ -103,7 +106,7 @@ KO_DOCKER_REPO=registry.invalid/countersign ko build ./cmd/countersign --push=fa
 
 ## Rules and saved examples
 
-Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 43 rules and 168 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
+Every rule has an identifier and at least one saved example: an input and the exact output expected, under [`testdata/rules/<rule>/<case>/`](testdata/rules). There are 46 rules and 165 examples. `go test` runs them all, fails if any output changes by a byte, and fails if a rule has no example.
 
 | Rules | What they cover |
 | --- | --- |
@@ -115,7 +118,7 @@ Every rule has an identifier and at least one saved example: an input and the ex
 
 After a deliberate change, `go test . -update` rewrites the expected outputs. Read the difference before committing it.
 
-[`testdata/contract/`](testdata/contract) is a copy of the 51 saved examples in Muster's contract. A test replays them against Countersign's client: each of the worker calls is made and what is sent must match the example exactly, each refusal must be sorted correctly into "refused" or "try again", and each step Muster hands out must meet the rule expected for it.
+[`testdata/contract/`](testdata/contract) is a copy of the 50 saved examples in Muster's contract, taken at Muster's commit `a362cb1`. A test replays them against Countersign's client: each worker call and the release call is made and what is sent must match the example exactly, each refusal must be sorted correctly into "refused", "lease lost" or "try again", and each step Muster hands out must meet the rule expected for it.
 
 ## Layout
 
@@ -127,7 +130,7 @@ After a deliberate change, `go test . -update` rewrites the expected outputs. Re
 | [`internal/decide`](internal/decide) | Checking the owner's decision and writing the record |
 | [`internal/record`](internal/record) | The decision record |
 | [`internal/store`](internal/store) | The inbox and the spool on disk |
-| [`internal/muster`](internal/muster) | The five calls to Muster: the HTTP client, the reading of a lease, the in-memory stand-in and the fake server |
+| [`internal/muster`](internal/muster) | The calls to Muster: the HTTP client, the reading of a lease, the in-memory stand-in and the fake server |
 | [`internal/worker`](internal/worker) | The lease loop |
 | [`testdata/rules`](testdata/rules) | The saved examples |
 | [`testdata/contract`](testdata/contract) | Muster's contract examples |
@@ -142,6 +145,8 @@ Each of these is a requirement that is not built or not proven, with the reason.
 | Running against a live Muster | The client is built and replays Muster's saved examples, but it has only ever talked to the fake server in this repository. The first run against a real Muster is still to do. |
 | Pausing an unfamiliar item | Countersign asks with `needs_subtool`. Muster's contract has no such move from any state Countersign holds, so Muster refuses. The item is not shown to the owner, the refusal is logged once, and the item comes back each time its lease runs out. The two specifications disagree and one has to change. |
 | Where the score and title come from | Muster's contract carries earlier workers' results without defining them. Countersign reads `total`, `recommendation`, `split_merge_review` and the failed `gates` from Assay's published result, and the title from `found.title` or Sextant's `core_job`. If those change, so must Countersign. |
+| Listing every stopped item | Muster's contract has no call for it. `held` lists only the items Countersign stopped itself, as far back as its local log goes. |
+| Keeping a decision when the credential is rejected | `401` and `403` are sorted as refusals, as instructed for this build. A decision in the spool at that moment is set aside and has to be made again when the item is offered again. Retrying instead would keep it. |
 | A web inbox for the owner | The specification does not say how the owner signs in. Decisions are made with the command line, run inside the pod. |
 | The public `pub.*` views | They belong to Logbook and are fed by Muster. Countersign supplies the decision record as the result of each step. |
 | Deployment: the Deployment and NetworkPolicy, the priority class, the spool volume | Not included yet. The program is ready for them: it needs no privileges, writes only to its spool and stops cleanly on `SIGTERM`. |
