@@ -65,8 +65,8 @@ usage: countersign [-spool DIR] COMMAND
   show ID               show one waiting item and the outcomes allowed for it
   review [ID...]        step through waiting items interactively; flags: -kind -lane
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
-                        -waybill FILE (approve of a scored item, or override of
-                        a screened_out one: the specification the owner reviewed)
+                        -waybill FILE (approve of a scored item: the specification
+                        the owner reviewed; review cannot approve a candidate)
   decide -f FILE        record a decision given as JSON ("-" is standard input)
   release ID            let an item run again that a worker stopped with E_PARSE;
                         flag: -reason (kept in the local log only)

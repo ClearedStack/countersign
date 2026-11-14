@@ -575,6 +575,50 @@ func readSpec(t *testing.T) string {
 	return string(b)
 }
 
+// paddedSpec returns the calculator specification, otherwise valid, padded in
+// its summary so that the file is exactly n bytes long.
+func paddedSpec(t *testing.T, n int) string {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal([]byte(readSpec(t)), &m); err != nil {
+		t.Fatal(err)
+	}
+	m["summary"] = ""
+	base, err := json.Marshal(m)
+	if err != nil || n < len(base) {
+		t.Fatalf("cannot pad to %d bytes: %v", n, err)
+	}
+	m["summary"] = strings.Repeat("a", n-len(base))
+	out, err := json.Marshal(m)
+	if err != nil || len(out) != n {
+		t.Fatalf("padded to %d bytes, want %d: %v", len(out), n, err)
+	}
+	return string(out)
+}
+
+func TestReadWaybillHoldsTheSizeLimit(t *testing.T) {
+	dir := t.TempDir()
+	tests := []struct {
+		name string
+		path string
+		ok   bool
+	}{
+		{"exactly the limit", writeFile(t, paddedSpec(t, item.MaxWaybill)), true},
+		{"one byte over the limit", writeFile(t, paddedSpec(t, item.MaxWaybill+1)), false},
+		{"empty", writeFile(t, ""), false},
+		{"a directory", dir, false},
+		{"missing", filepath.Join(dir, "none.json"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, ok := readWaybill(tt.path)
+			if ok != tt.ok || (ok && len(b) != item.MaxWaybill) {
+				t.Fatalf("readWaybill = %d bytes, %v; want ok=%v", len(b), ok, tt.ok)
+			}
+		})
+	}
+}
+
 func addAll(t *testing.T, spool string) {
 	t.Helper()
 	for _, it := range []string{scoredItem, screenedItem, proposalItem} {
@@ -588,7 +632,7 @@ func TestDecideWaybillIsRefusedAndNothingIsSpooled(t *testing.T) {
 	spec := readSpec(t)
 	good := writeFile(t, spec)
 	dup := writeFile(t, strings.Replace(spec, `"title"`, `"tool_type": "calculator", "title"`, 1))
-	big := writeFile(t, `{"title":"`+strings.Repeat("a", item.MaxWaybill)+`"}`)
+	big := writeFile(t, paddedSpec(t, item.MaxWaybill+1))
 
 	tests := []struct {
 		name string
@@ -791,11 +835,47 @@ func TestGoldenApprovalWithWaybillIsWhatWaybillAccepts(t *testing.T) {
 	}
 }
 
-func TestOverrideOfAScreenedOutItemMayCarryAWaybill(t *testing.T) {
+func TestOverrideWithAWaybillIsRefused(t *testing.T) {
 	spool := t.TempDir()
 	addAll(t, spool)
 	r := cs(t, spool, "", "decide", "PA-0002", "override", "-reason", "Reshaped to do one job.", "-waybill", writeFile(t, readSpec(t)))
-	if r.code != exitOK || !strings.Contains(r.stdout, `"waybill"`) {
+	if r.code != exitError || r.stdout != "" || !strings.HasPrefix(r.stderr, "E_PARSE decision.field_unexpected PA-0002:") {
 		t.Fatalf("override with a waybill: %+v", r)
+	}
+	if l := cs(t, spool, "", "log"); l.stdout != "" {
+		t.Errorf("a refused decision was spooled: %s", l.stdout)
+	}
+	// Without the flag the override still works.
+	if r = cs(t, spool, "", "decide", "PA-0002", "override", "-reason", "Reshaped to do one job."); r.code != exitOK {
+		t.Errorf("override: %+v", r)
+	}
+}
+
+func TestDecideAcceptsASpecificationAtTheSizeLimit(t *testing.T) {
+	spool := t.TempDir()
+	addAll(t, spool)
+	r := cs(t, spool, "", "decide", "PA-0001", "approve", "-waybill", writeFile(t, paddedSpec(t, item.MaxWaybill)))
+	if r.code != exitOK {
+		t.Fatalf("a specification of exactly the limit: %+v", r)
+	}
+}
+
+func TestReviewRefusesToApproveACandidateWithoutASpecification(t *testing.T) {
+	spool := t.TempDir()
+	addAll(t, spool)
+	want := "countersign: review cannot approve a candidate: use decide ID approve -waybill FILE\n"
+	r := cs(t, spool, "approve\nquit\n", "review", "PA-0001")
+	if r.code != exitOK || r.stderr != want || strings.Contains(r.stdout, "recorded") {
+		t.Fatalf("review approve: %+v", r)
+	}
+	if l := cs(t, spool, "", "log"); l.stdout != "" {
+		t.Errorf("an approval without a specification was spooled: %s", l.stdout)
+	}
+	// The other outcomes, and approving an edit proposal, are unchanged.
+	if r = cs(t, spool, "reject\nLow score.\n", "review", "PA-0001"); r.code != exitOK || !strings.Contains(r.stdout, "recorded PA-0001") {
+		t.Errorf("review reject: %+v", r)
+	}
+	if r = cs(t, spool, "approve\n\n", "review", "EP-0001"); r.code != exitOK || !strings.Contains(r.stdout, "recorded EP-0001") {
+		t.Errorf("review approve of an edit proposal: %+v", r)
 	}
 }

@@ -130,6 +130,13 @@ func cmdReview(e env, st *store.Store, args []string) int {
 				continue
 			}
 
+			if outcome == item.Approve && it.Kind == item.Candidate {
+				// An approval has to carry a specification, which review
+				// cannot take.
+				fmt.Fprintln(e.stderr, "countersign: review cannot approve a candidate: use decide ID approve -waybill FILE")
+				continue
+			}
+
 			d := decide.Decision{Item: it.ID, Outcome: outcome}
 			switch outcome {
 			case item.Link:
