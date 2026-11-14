@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +10,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ClearedStack/countersign/internal/item"
+	"github.com/ClearedStack/countersign/internal/muster"
+	"github.com/ClearedStack/countersign/internal/store"
+	"github.com/ClearedStack/countersign/internal/worker"
 )
 
 var at = time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC)
@@ -540,5 +546,256 @@ LOG     2 settled  (acknowledged 1, refused 1)
 		got.Inbox.Scored != 1 || got.Inbox.ScreenedOut != 1 || got.Inbox.Proposals != 0 ||
 		got.Outbox.Waiting != 1 || got.Held != 1 || got.Log.Acknowledged != 1 || got.Log.Refused != 1 {
 		t.Errorf("unexpected status JSON: %+v", got)
+	}
+}
+
+// calculatorSpec is Waybill's own accepted example, copied from
+// tools/spec-profiles/calculator/testdata/ok-capped-allowance/record.json in
+// ClearedStack/waybill, branch consort/ready-to-deploy (commit 52c51a9), with
+// the two edits Waybill's worker test makes to it before playing it as
+// results.countersign: item_id and state left out, and an official https url
+// on the authority.
+const calculatorSpec = "../../testdata/waybill/ok-capped-allowance.json"
+
+func writeFile(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "spec.json")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func readSpec(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(calculatorSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func addAll(t *testing.T, spool string) {
+	t.Helper()
+	for _, it := range []string{scoredItem, screenedItem, proposalItem} {
+		if r := cs(t, spool, it, "add"); r.code != exitOK {
+			t.Fatalf("add: %+v", r)
+		}
+	}
+}
+
+func TestDecideWaybillIsRefusedAndNothingIsSpooled(t *testing.T) {
+	spec := readSpec(t)
+	good := writeFile(t, spec)
+	dup := writeFile(t, strings.Replace(spec, `"title"`, `"tool_type": "calculator", "title"`, 1))
+	big := writeFile(t, `{"title":"`+strings.Repeat("a", item.MaxWaybill)+`"}`)
+
+	tests := []struct {
+		name string
+		args []string
+		rule string
+	}{
+		{"missing file", []string{"decide", "PA-0001", "approve", "-waybill", filepath.Join(t.TempDir(), "none.json")}, "decision.malformed"},
+		{"a directory", []string{"decide", "PA-0001", "approve", "-waybill", t.TempDir()}, "decision.malformed"},
+		{"empty file", []string{"decide", "PA-0001", "approve", "-waybill", writeFile(t, "")}, "decision.malformed"},
+		{"oversized file", []string{"decide", "PA-0001", "approve", "-waybill", big}, "decision.malformed"},
+		{"not json", []string{"decide", "PA-0001", "approve", "-waybill", writeFile(t, `{"title":`)}, "decision.malformed"},
+		{"an array", []string{"decide", "PA-0001", "approve", "-waybill", writeFile(t, `[]`)}, "decision.malformed"},
+		{"duplicate key", []string{"decide", "PA-0001", "approve", "-waybill", dup}, "decision.malformed"},
+		{"unknown field", []string{"decide", "PA-0001", "approve", "-waybill", writeFile(t, `{"price":1}`)}, "decision.malformed"},
+		{"no title", []string{"decide", "PA-0001", "approve", "-waybill", writeFile(t, strings.Replace(spec, `"title": "prorated daily allowance with a cap",`, "", 1))}, "decision.malformed"},
+		{"link", []string{"decide", "PA-0001", "link", "-tool", "t", "-reason", "r", "-waybill", good}, "decision.field_unexpected"},
+		{"merge", []string{"decide", "PA-0001", "merge", "-parent", "p", "-reason", "r", "-waybill", good}, "decision.field_unexpected"},
+		{"park", []string{"decide", "PA-0001", "park", "-blocker", "b", "-reason", "r", "-waybill", good}, "decision.field_unexpected"},
+		{"reject", []string{"decide", "PA-0001", "reject", "-reason", "r", "-waybill", good}, "decision.field_unexpected"},
+		{"approve an edit proposal", []string{"decide", "EP-0001", "approve", "-waybill", good}, "decision.field_unexpected"},
+		{"decline an edit proposal", []string{"decide", "EP-0001", "decline", "-waybill", good}, "decision.field_unexpected"},
+		{"outcome not allowed for the state", []string{"decide", "PA-0002", "approve", "-waybill", good}, "decision.outcome_not_allowed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spool := t.TempDir()
+			addAll(t, spool)
+			r := cs(t, spool, "", tt.args...)
+			if r.code != exitError || r.stdout != "" || !strings.HasPrefix(r.stderr, "E_PARSE "+tt.rule+" ") {
+				t.Fatalf("got %+v, want a refusal under %s", r, tt.rule)
+			}
+			if strings.Count(r.stderr, "\n") != 1 || strings.Contains(r.stderr, string(filepath.Separator)) || strings.Contains(r.stderr, "prorated") {
+				t.Errorf("the refusal is not one fixed line: %q", r.stderr)
+			}
+			if l := cs(t, spool, "", "log"); l.stdout != "" {
+				t.Errorf("a refused decision was spooled: %s", l.stdout)
+			}
+			if l := cs(t, spool, "", "list"); strings.Count(l.stdout, "\n") != 4 {
+				t.Errorf("an item left the inbox:\n%s", l.stdout)
+			}
+		})
+	}
+}
+
+func TestDecideWaybillCannotComeFromADecisionFile(t *testing.T) {
+	spool := t.TempDir()
+	addAll(t, spool)
+	good := writeFile(t, readSpec(t))
+	r := cs(t, spool, `{"item":"PA-0001","outcome":"approve"}`, "decide", "-f", "-", "-waybill", good)
+	if r.code != exitUsage || r.stdout != "" {
+		t.Errorf("decide -f with -waybill: %+v", r)
+	}
+	r = cs(t, spool, `{"item":"PA-0001","outcome":"approve","waybill":{"title":"t"}}`, "decide", "-f", "-")
+	if r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE decision.malformed") {
+		t.Errorf("a waybill inside a decision file: %+v", r)
+	}
+	if l := cs(t, spool, "", "log"); l.stdout != "" {
+		t.Errorf("something was spooled: %s", l.stdout)
+	}
+}
+
+func TestDecideWaybillIsSpooledWithTheRecord(t *testing.T) {
+	spec := readSpec(t)
+	var want bytes.Buffer
+	if err := json.Compact(&want, []byte(spec)); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"decide", "PA-0001", "approve", "-waybill", writeFile(t, spec)},
+		{"decide", "-waybill", writeFile(t, spec), "PA-0001", "approve"},
+		{"decide", "PA-0001", "approve", "--waybill", writeFile(t, spec)},
+		{"decide", "PA-0001", "approve", "--waybill=" + writeFile(t, spec)},
+	} {
+		spool := t.TempDir()
+		addAll(t, spool)
+		r := cs(t, spool, "", args...)
+		if r.code != exitOK {
+			t.Fatalf("%v: %+v", args, r)
+		}
+		// The decision as printed, and the first entry of the log.
+		for name, out := range map[string]string{"decide": r.stdout, "log": cs(t, spool, "", "log").stdout} {
+			var got struct {
+				Record struct{ Waybill json.RawMessage }
+			}
+			if err := json.NewDecoder(strings.NewReader(out)).Decode(&got); err != nil {
+				t.Fatal(err)
+			}
+			var have bytes.Buffer
+			if err := json.Compact(&have, got.Record.Waybill); err != nil || !bytes.Equal(have.Bytes(), want.Bytes()) {
+				t.Errorf("%s %v: waybill\n%s\nwant\n%s", name, args, got.Record.Waybill, want.Bytes())
+			}
+		}
+	}
+}
+
+// capture is a Muster that keeps the result of the one complete call it is
+// given, and otherwise answers as the stand-in does.
+type capture struct {
+	muster.Queue
+	lease  string
+	state  item.State
+	result []byte
+}
+
+func (c *capture) Complete(ctx context.Context, lease string, state item.State, result []byte) error {
+	c.lease, c.state, c.result = lease, state, append([]byte(nil), result...)
+	return c.Queue.Complete(ctx, lease, state, result)
+}
+
+// forbidden are the names Waybill refuses anywhere in results.countersign
+// (forbiddenObservationKeys in waybill/internal/buildspec).
+var forbidden = []string{
+	"html", "raw_html", "raw_text", "body_text", "page_text", "dom", "headers", "response_headers",
+	"screenshot", "screenshots", "snapshot", "snapshots", "observation", "observations",
+}
+
+func anyKey(v any, names []string) bool {
+	switch v := v.(type) {
+	case map[string]any:
+		for k, child := range v {
+			for _, n := range names {
+				if k == n {
+					return true
+				}
+			}
+			if anyKey(child, names) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if anyKey(child, names) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// The golden test: an approval with a specification goes through the worker
+// to Muster, and what Muster is given as the result is what Waybill's
+// extractor takes as results.countersign (waybill/internal/worker,
+// extractCountersignRecord, commit 52c51a9): an object under "waybill", an
+// outcome of "approve" if any, no "record" next to it, no forbidden key
+// anywhere, and the record Waybill's own example holds, unchanged.
+func TestGoldenApprovalWithWaybillIsWhatWaybillAccepts(t *testing.T) {
+	spool := t.TempDir()
+	st, err := store.Open(spool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed := muster.Seed{Ownership: []string{"catalog/sample/description"}}
+	seed.Steps = append(seed.Steps, json.RawMessage(`{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"score":82,"recommendation":"build"}}}`))
+	standin, err := muster.NewStandIn(seed, func() time.Time { return at })
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := &capture{Queue: standin}
+	w := &worker.Worker{Store: st, Queue: q, Now: func() time.Time { return at }, Log: func(worker.Event) {}}
+
+	w.Tick(context.Background()) // the item arrives under a lease
+	r := cs(t, spool, "", "decide", "PA-0001", "approve", "-waybill", writeFile(t, readSpec(t)))
+	if r.code != exitOK {
+		t.Fatalf("decide: %+v", r)
+	}
+	w.Tick(context.Background()) // the decision goes to Muster
+	if q.result == nil || q.state != item.Approved {
+		t.Fatalf("Muster was given no approval: state %q", q.state)
+	}
+
+	body, err := json.Marshal(map[string]any{"contract": "v1", "lease": q.lease, "state": q.state, "result": json.RawMessage(q.result)})
+	if err != nil || len(body) > 64<<10 {
+		t.Fatalf("the complete body is %d bytes: %v", len(body), err)
+	}
+	var outer map[string]json.RawMessage
+	if err := json.Unmarshal(q.result, &outer); err != nil {
+		t.Fatal(err)
+	}
+	var outcome string
+	if err := json.Unmarshal(outer["outcome"], &outcome); err != nil || outcome != "approve" {
+		t.Errorf("outcome %q: %v", outcome, err)
+	}
+	if _, ok := outer["record"]; ok {
+		t.Error("both waybill and record are present")
+	}
+	var tree any
+	if err := json.Unmarshal(q.result, &tree); err != nil || anyKey(tree, forbidden) {
+		t.Errorf("the result holds a key Waybill refuses: %v", err)
+	}
+	var want bytes.Buffer
+	if err := json.Compact(&want, []byte(readSpec(t))); err != nil {
+		t.Fatal(err)
+	}
+	var have bytes.Buffer
+	if err := json.Compact(&have, outer["waybill"]); err != nil || !bytes.Equal(have.Bytes(), want.Bytes()) {
+		t.Errorf("waybill\n%s\nwant\n%s", have.Bytes(), want.Bytes())
+	}
+	if snap := standin.Snapshot(); len(snap.Ledger) != 1 || snap.Ledger[0].Result == nil || len(snap.Ledger[0].Result.Waybill) == 0 {
+		t.Errorf("Countersign's own Muster stand-in did not keep the waybill: %+v", snap)
+	}
+}
+
+func TestOverrideOfAScreenedOutItemMayCarryAWaybill(t *testing.T) {
+	spool := t.TempDir()
+	addAll(t, spool)
+	r := cs(t, spool, "", "decide", "PA-0002", "override", "-reason", "Reshaped to do one job.", "-waybill", writeFile(t, readSpec(t)))
+	if r.code != exitOK || !strings.Contains(r.stdout, `"waybill"`) {
+		t.Fatalf("override with a waybill: %+v", r)
 	}
 }
