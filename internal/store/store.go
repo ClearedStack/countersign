@@ -39,9 +39,10 @@ const KeepDone = 200
 
 // Status of a record in the log.
 const (
-	Waiting      = "waiting"
-	Acknowledged = "acknowledged"
-	Refused      = "refused"
+	Waiting      = "waiting"      // to be sent
+	Unleased     = "unleased"     // its lease was lost; kept until the item is leased again
+	Acknowledged = "acknowledged" // Muster answered 200
+	Refused      = "refused"      // set aside; it will not be sent
 )
 
 // Held is an item waiting for the owner. Arrived orders items within a lane.
@@ -292,11 +293,55 @@ func (s *Store) Get(id string) (Held, error) {
 	return h, nil
 }
 
-// Accept puts a checked item in the inbox. lease is the token Muster leased
-// it under, or empty for an item added by hand. An item that is already
-// waiting keeps its place and takes the new lease.
-func (s *Store) Accept(lease string, it item.Item) error {
-	return s.locked(func() error {
+// Arrival says what became of an item handed to Accept.
+type Arrival struct {
+	// Resent: a decision on this item was already waiting, so the item did
+	// not go to the inbox. The decision goes out again under the new lease.
+	Resent bool
+	// Stale: a decision on this item was waiting, but the item came back
+	// changed. The decision was set aside and the item is in the inbox.
+	Stale bool
+}
+
+// Accept takes in a checked item. lease is the token Muster leased it under,
+// or empty for an item added by hand.
+//
+// Normally the item goes in the inbox. An item that is already there keeps
+// its place and takes the new lease. If the owner has already decided on
+// this item and Muster has not confirmed the decision, the item is being
+// offered again because its lease was lost: the decision takes the new lease
+// and goes out again, and the owner is not asked twice.
+func (s *Store) Accept(lease string, it item.Item) (Arrival, error) {
+	var out Arrival
+	err := s.locked(func() error {
+		waiting, err := s.readEntries("outbox")
+		if err != nil {
+			return err
+		}
+		for _, e := range waiting {
+			rec := e.Record
+			if lease == "" || rec.Call != record.Complete || rec.Item != it.ID {
+				continue
+			}
+			if rec.Kind == it.Kind && rec.From == it.State {
+				e.Lease, e.Status = lease, Waiting
+				if err := writeAtomic(s.outboxDir(), seqName(e.Seq), e); err != nil {
+					return err
+				}
+				out.Resent = true
+				return removeSynced(s.pendingDir(), it.ID+".json")
+			}
+			// The decision was about the item as it was. It is not sent.
+			e.Status, e.Fingerprint = Refused, rule.Fail(rule.SpoolStale, it.ID).Fingerprint()
+			if err := writeAtomic(s.doneDir(), seqName(e.Seq), e); err != nil {
+				return err
+			}
+			if err := removeSynced(s.outboxDir(), seqName(e.Seq)); err != nil {
+				return err
+			}
+			out.Stale = true
+		}
+
 		arrived := uint64(0)
 		held, err := s.readPending()
 		if err != nil {
@@ -317,6 +362,7 @@ func (s *Store) Accept(lease string, it item.Item) error {
 		}
 		return writeAtomic(s.pendingDir(), it.ID+".json", Held{Arrived: arrived, Lease: lease, Item: it})
 	})
+	return out, err
 }
 
 // Report spools what Countersign tells Muster about a leased item it will
@@ -347,7 +393,7 @@ func (s *Store) Report(lease string, perr *rule.Error, at time.Time) (*record.Re
 			}
 			for _, e := range entries {
 				same := e.Record.Call == call && e.Record.Item == perr.Item && e.Record.Rule == string(perr.Rule)
-				if same && perr.Item != "" && (e.Status == Waiting || e.Status == Refused) {
+				if same && perr.Item != "" && e.Status != Acknowledged {
 					return nil
 				}
 			}
@@ -425,6 +471,39 @@ func (s *Store) Decide(d decide.Decision, at time.Time) (decide.Result, error) {
 	return res, nil
 }
 
+// Release records the owner's decision to let a stopped item run again. It
+// is spooled like any other decision and sent with Muster's release call,
+// which names the item and needs no lease.
+func (s *Store) Release(id, reason string, at time.Time) (decide.Result, error) {
+	res, perr := decide.Release(id, reason, at)
+	if perr != nil {
+		return decide.Result{}, perr
+	}
+	err := s.locked(func() error { return s.spool("", res.Record) })
+	if err != nil {
+		return decide.Result{}, err
+	}
+	return res, nil
+}
+
+// Unlease marks a spooled decision as having lost its lease. It stays in
+// the spool, is not sent, and does not hold up what is behind it. Accept
+// gives it a new lease when Muster offers the item again.
+func (s *Store) Unlease(seq uint64) error {
+	return s.locked(func() error {
+		var e Entry
+		err := readJSON(filepath.Join(s.outboxDir(), seqName(seq)), &e)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		e.Status = Unleased
+		return writeAtomic(s.outboxDir(), seqName(seq), e)
+	})
+}
+
 // Drop removes an item from the inbox without a decision, because its lease
 // ended. Muster still has the item.
 func (s *Store) Drop(id string) error {
@@ -434,7 +513,8 @@ func (s *Store) Drop(id string) error {
 	return s.locked(func() error { return removeSynced(s.pendingDir(), id+".json") })
 }
 
-// Outbox lists the records Muster has not confirmed, oldest first.
+// Outbox lists the records Muster has not confirmed, oldest first: those
+// waiting to be sent and those that lost their lease.
 func (s *Store) Outbox() ([]Entry, error) {
 	out, err := s.readEntries("outbox")
 	if err != nil {

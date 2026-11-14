@@ -60,10 +60,6 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 		item.Approve: rule.DecisionProposalApprove,
 		item.Decline: rule.DecisionProposalDecline,
 	},
-	item.Release: {
-		item.LetGo: rule.DecisionRelease,
-		item.Keep:  rule.DecisionKeep,
-	},
 }
 
 // Apply checks a decision against the item it is for. The checks run in a
@@ -77,9 +73,6 @@ var accepted = map[item.Kind]map[item.Outcome]rule.ID{
 //     for a merge, the blocker for a park, the reason for a rejection;
 //  6. an override has a written reason. An override is reopening a
 //     screened_out item, or choosing against the recommendation.
-//
-// Releasing or keeping a held item moves it nowhere: it keeps the state it
-// is held in. A reason may be given and is not required.
 func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 	fail := func(id rule.ID) (Result, *rule.Error) { return Result{}, rule.Fail(id, it.ID) }
 
@@ -145,4 +138,25 @@ func Apply(it item.Item, d Decision, at time.Time) (Result, *rule.Error) {
 		Blocker:        blocker,
 	}.Seal()
 	return Result{Rule: accepted[it.Kind][d.Outcome], Record: rec}, nil
+}
+
+// Release writes down the owner's decision to let a stopped item run again.
+// A stopped item is one a worker failed with E_PARSE: Muster holds it in its
+// state and offers it to nobody until the owner releases it. The reason is
+// optional and stays in Countersign's own log, because Muster's release call
+// has nowhere to carry one.
+func Release(id, reason string, at time.Time) (Result, *rule.Error) {
+	if !item.ValidID(item.Candidate, id) {
+		return Result{}, rule.Fail(rule.DecisionMalformed, id)
+	}
+	if !item.ValidText(reason, item.MaxText) {
+		return Result{}, rule.Fail(rule.DecisionTextInvalid, id)
+	}
+	rec := record.Record{
+		Call:   record.Release,
+		Item:   id,
+		At:     record.Stamp(at),
+		Reason: strings.TrimSpace(reason),
+	}.Seal()
+	return Result{Rule: rule.DecisionRelease, Record: rec}, nil
 }

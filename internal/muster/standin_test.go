@@ -137,7 +137,7 @@ func TestStandInRefusesWhatMusterWouldRefuse(t *testing.T) {
 	if err := s.Complete(context.Background(), l.Token, item.Observed, []byte(`{"note":"made-up"}`)); !errors.Is(err, ErrRefused) {
 		t.Errorf("a result that is not a decision record: %v", err)
 	}
-	if err := s.Complete(context.Background(), "PA-0002.99", item.Observed, b); !errors.Is(err, ErrRefused) {
+	if err := s.Complete(context.Background(), "PA-0002.99.1", item.Observed, b); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Errorf("a lease that was never given: %v", err)
 	}
 }
@@ -164,10 +164,10 @@ func TestRepeatingTheCallThatEndedALease(t *testing.T) {
 	if n := len(s.Snapshot().Ledger); n != 1 {
 		t.Errorf("the ledger holds %d entries", n)
 	}
-	if err := s.Fail(context.Background(), l.Token, rule.Parse); !errors.Is(err, ErrRefused) {
+	if err := s.Fail(context.Background(), l.Token, rule.Parse); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Errorf("a different call on an ended lease: %v", err)
 	}
-	if err := s.Heartbeat(context.Background(), l.Token); !errors.Is(err, ErrRefused) {
+	if err := s.Heartbeat(context.Background(), l.Token); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Errorf("heartbeat on an ended lease: %v", err)
 	}
 }
@@ -187,7 +187,7 @@ func TestLeasesRunOutAndALateResultStillCounts(t *testing.T) {
 		t.Fatalf("the heartbeat did not extend the lease: %v", err)
 	}
 	c.now = c.now.Add(61 * time.Second)
-	if err := s.Heartbeat(ctx, l.Token); !errors.Is(err, ErrRefused) {
+	if err := s.Heartbeat(ctx, l.Token); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Fatalf("heartbeat after the lease ran out: %v", err)
 	}
 	// Nobody has taken the step again, so the late result is kept.
@@ -204,7 +204,7 @@ func TestLeasesRunOutAndALateResultStillCounts(t *testing.T) {
 		t.Fatalf("second lease: %+v", fresh)
 	}
 	rec := decided(t, it, decide.Decision{Outcome: item.Park, Blocker: "Waiting."})
-	if err := send(s, old.Token, rec); !errors.Is(err, ErrRefused) {
+	if err := send(s, old.Token, rec); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Errorf("the lost lease was honoured: %v", err)
 	}
 	if err := send(s, fresh.Token, rec); err != nil {
@@ -212,72 +212,46 @@ func TestLeasesRunOutAndALateResultStillCounts(t *testing.T) {
 	}
 }
 
-func TestFailAndNeedsSubtool(t *testing.T) {
+func TestFailNeedsSubtoolAndRelease(t *testing.T) {
 	ctx := context.Background()
 	c := &clock{at}
 
-	s := standIn(t, c, scoredStep)
+	// E_PARSE: the item is stopped. It keeps its state and is offered to
+	// nobody until the owner releases it.
+	s := standIn(t, c, scoredStep, screenedStep)
 	l, _ := take(t, s)
+	if err := s.Release(ctx, "PA-0001"); !errors.Is(err, ErrRefused) {
+		t.Errorf("release of an item that is not stopped: %v", err)
+	}
 	if err := s.Fail(ctx, l.Token, rule.Parse); err != nil {
 		t.Fatal(err)
 	}
 	if snap := s.Snapshot(); snap.Items[0].Status != StatusHeld || snap.Items[0].State != "scored" {
 		t.Errorf("after E_PARSE: %+v", snap.Items[0])
 	}
-	// The item itself is not offered again. The owner is given a release
-	// step for it instead.
-	r, held := take(t, s)
-	if r.Token != "release:PA-0001.2" || held.Kind != item.Release || held.State != item.Scored || held.HeldWorker != "countersign" || held.HeldCode != "E_PARSE" {
-		t.Fatalf("release step: %+v %+v", r, held)
+	if next, _ := take(t, s); next.ID != "PA-0002" {
+		t.Errorf("the stopped item was offered again: %+v", next)
 	}
 	if body, err := s.Lease(ctx); err != nil || body != nil {
 		t.Errorf("something else was offered: %s %v", body, err)
 	}
-	release := func(state item.State, result string) error {
-		return s.Complete(ctx, r.Token, state, []byte(result))
+	if err := s.Release(ctx, "PA-0404"); !errors.Is(err, ErrRefused) {
+		t.Errorf("release of an item Muster does not have: %v", err)
 	}
-	for name, err := range map[string]error{
-		"another state":       release(item.Approved, `{"decision":"release"}`),
-		"no decision":         release(item.Scored, `{}`),
-		"an unknown decision": release(item.Scored, `{"decision":"approve"}`),
-		"another field":       release(item.Scored, `{"decision":"release","reason":"made-up"}`),
-		"the decision record": release(item.Scored, `{"contract":"v1","call":"complete","outcome":"release"}`),
-		"paused":              s.NeedsSubtool(ctx, r.Token),
-		"failed with E_PARSE": s.Fail(ctx, r.Token, rule.Parse),
-	} {
-		if !errors.Is(err, ErrRefused) {
-			t.Errorf("release step, %s: got %v, want a refusal", name, err)
-		}
-	}
-	if err := release(item.Scored, `{"decision":"release"}`); err != nil {
+	if err := s.Release(ctx, "PA-0001"); err != nil {
 		t.Fatalf("release: %v", err)
 	}
-	if err := release(item.Scored, `{"decision":"release"}`); err != nil {
-		t.Errorf("the same release again: %v", err)
-	}
-	if err := release(item.Scored, `{"decision":"keep"}`); !errors.Is(err, ErrRefused) {
-		t.Errorf("a different decision on an ended release step: %v", err)
-	}
-	// Released: the item's own step is offered again, in the urgent lane.
+	// Released: its step is offered again, in the urgent lane, in the same
+	// state.
 	again, _ := take(t, s)
-	if again.ID != "PA-0001" || again.Kind != "item" || again.Lane != "urgent" || again.Attempt != 2 {
+	if again.ID != "PA-0001" || again.State != "scored" || again.Lane != "urgent" || again.Attempt != 2 {
 		t.Errorf("after release: %+v", again)
 	}
-
-	// Kept: the release step ends and nothing offers the item again.
-	s = standIn(t, c, scoredStep)
-	l, _ = take(t, s)
-	if err := s.Fail(ctx, l.Token, rule.Parse); err != nil {
-		t.Fatal(err)
-	}
-	r, _ = take(t, s)
-	if err := s.Complete(ctx, r.Token, item.Scored, []byte(`{"decision":"keep"}`)); err != nil {
-		t.Fatalf("keep: %v", err)
-	}
-	if body, err := s.Lease(ctx); err != nil || body != nil {
-		t.Errorf("a kept item was offered again: %s %v", body, err)
+	if err := s.Release(ctx, "PA-0001"); !errors.Is(err, ErrRefused) {
+		t.Errorf("a second release: %v", err)
 	}
 
+	// E_TIMEOUT: the step stays in the queue.
 	s = standIn(t, c, scoredStep)
 	l, _ = take(t, s)
 	if err := s.Fail(ctx, l.Token, rule.Timeout); err != nil {
@@ -287,6 +261,8 @@ func TestFailAndNeedsSubtool(t *testing.T) {
 		t.Errorf("after E_TIMEOUT the step should be offered again: %+v", again)
 	}
 
+	// A missing rule is not reported with fail, and Countersign's states
+	// cannot be paused.
 	s = standIn(t, c, scoredStep, proposalStep)
 	l, _ = take(t, s)
 	if err := s.Fail(ctx, l.Token, rule.NeedsSubtool); !errors.Is(err, ErrRefused) {
@@ -298,6 +274,48 @@ func TestFailAndNeedsSubtool(t *testing.T) {
 	p, _ := take(t, s)
 	if err := s.NeedsSubtool(ctx, p.Token); !errors.Is(err, ErrRefused) {
 		t.Errorf("a proposal cannot be paused: %v", err)
+	}
+	if err := s.NeedsSubtool(ctx, "PA-0001.9.9"); !errors.Is(err, ErrLeaseNotHeld) {
+		t.Errorf("needs_subtool on a lease never given: %v", err)
+	}
+}
+
+func TestRequeueAndReplace(t *testing.T) {
+	ctx := context.Background()
+	s := standIn(t, &clock{at}, scoredStep)
+	l, it := take(t, s)
+	s.Requeue()
+	if err := s.Heartbeat(ctx, l.Token); !errors.Is(err, ErrLeaseNotHeld) {
+		t.Errorf("heartbeat after the lease was taken away: %v", err)
+	}
+	if err := send(s, l.Token, decided(t, it, decide.Decision{Outcome: item.Park, Blocker: "Waiting."})); !errors.Is(err, ErrLeaseNotHeld) {
+		t.Errorf("complete after the lease was taken away: %v", err)
+	}
+	if err := s.Replace(json.RawMessage(screenedStep)); !errors.Is(err, ErrSeed) {
+		t.Errorf("replacing a step the stand-in does not have: %v", err)
+	}
+	changed := `{"kind":"item","id":"PA-0001","state":"screened_out","lane":"urgent","results":{"assay":{"gates":[{"name":"One job","pass":false,"reason":"It does three jobs."}]}}}`
+	if err := s.Replace(json.RawMessage(changed)); err != nil {
+		t.Fatal(err)
+	}
+	again, now := take(t, s)
+	if again.State != "screened_out" || again.Lane != "urgent" || now.State != item.ScreenedOut || again.Token == l.Token {
+		t.Errorf("after the replacement: %+v", again)
+	}
+}
+
+func TestRefusalsBeforeAnythingElse(t *testing.T) {
+	ctx := context.Background()
+	s := standIn(t, &clock{at}, scoredStep)
+	s.SetFaults(Faults{Refusals: 2})
+	if _, err := s.Lease(ctx); !errors.Is(err, ErrRefused) {
+		t.Errorf("first call: %v", err)
+	}
+	if err := s.Heartbeat(ctx, "PA-0001.1.1"); !errors.Is(err, ErrRefused) {
+		t.Errorf("second call: %v", err)
+	}
+	if body, err := s.Lease(ctx); err != nil || body == nil {
+		t.Errorf("third call: %s %v", body, err)
 	}
 }
 
@@ -343,7 +361,7 @@ func TestOneLeaseAtATimeUrgentFirst(t *testing.T) {
 		}
 		got = append(got, l.Token)
 	}
-	want := []string{"PA-0003.1", "PA-0002.2", "PA-0004.3", "PA-0001.4"}
+	want := []string{"PA-0003.1.1", "PA-0002.2.1", "PA-0004.3.1", "PA-0001.4.1"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v", got)
 	}

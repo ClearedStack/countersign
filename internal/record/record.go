@@ -17,11 +17,12 @@ const ContractVersion = "v1"
 // Worker is this component's name in the registry.
 const Worker = "countersign"
 
-// The three calls that carry a record. The names are Muster's.
+// The calls that carry a record. The names are Muster's.
 const (
 	Complete     = "complete"
 	Fail         = "fail"
 	NeedsSubtool = "needs_subtool"
+	Release      = "release"
 )
 
 // Record is one result. ID is a digest of everything else in it, so sending

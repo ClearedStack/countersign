@@ -72,7 +72,7 @@
     {
       "seq": 1,
       "status": "refused",
-      "lease": "PA-0030.1",
+      "lease": "PA-0030.1.1",
       "fingerprint": "c66f8ec8cbd363a6",
       "record": {
         "contract": "v1",

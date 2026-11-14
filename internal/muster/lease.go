@@ -57,8 +57,8 @@ var leaseFields = map[string]bool{
 	"proposal": true, "incident": true,
 }
 
-// A lease token is Muster's to choose. The ones it gives look like
-// "PA-0001.2" and "release:PA-0001.2".
+// A lease token is Muster's to choose, and is handed back as it was given.
+// The ones it gives look like "PA-0001.7.2" and "incident:PA-0001.8.1".
 var tokenPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 
 // ValidToken reports whether s can be a lease token: short, plain, and safe
@@ -134,13 +134,6 @@ var recommendations = map[string]item.State{
 	"Link":   item.Linked,
 	"Park":   item.Parked,
 	"Reject": item.Rejected,
-}
-
-// heldResult is results.held on a release step: the worker that stopped the
-// item and the code it gave.
-type heldResult struct {
-	Worker string `json:"worker"`
-	Code   string `json:"code"`
 }
 
 // Item turns a lease into the item the owner is shown, and checks it. The
@@ -221,22 +214,6 @@ func (l Lease) Item() (item.Item, *rule.Error) {
 		p := l.Proposal
 		it.Target, it.Repository, it.File = p.Target, p.Repository, p.File
 		it.EditKind, it.Change, it.Reason = p.EditKind, p.Change, p.Reason
-	case item.Release:
-		if l.Proposal != nil {
-			return fail(rule.IntakeFieldUnexpected)
-		}
-		if perr := title(); perr != nil {
-			return item.Item{}, perr
-		}
-		raw, ok := l.Results["held"]
-		if !ok {
-			return fail(rule.IntakeFieldMissing)
-		}
-		var h heldResult
-		if json.Unmarshal(raw, &h) != nil {
-			return fail(rule.IntakeMalformed)
-		}
-		it.HeldWorker, it.HeldCode = h.Worker, h.Code
 	}
 	if perr := item.Check(it); perr != nil {
 		return item.Item{}, perr

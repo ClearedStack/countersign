@@ -58,7 +58,6 @@ const (
 	DecisionProposalApprove       ID = "decision.proposal_approve"
 	DecisionProposalDecline       ID = "decision.proposal_decline"
 	DecisionRelease               ID = "decision.release"
-	DecisionKeep                  ID = "decision.keep"
 	DecisionMalformed             ID = "decision.malformed"
 	DecisionItemUnknown           ID = "decision.item_unknown"
 	DecisionOutcomeUnknown        ID = "decision.outcome_unknown"
@@ -78,7 +77,11 @@ const (
 	SpoolTimeout      ID = "spool.timeout"
 	SpoolRefused      ID = "spool.refused"
 	SpoolNoLease      ID = "spool.no_lease"
+	SpoolLeaseNotHeld ID = "spool.lease_not_held"
+	SpoolResent       ID = "spool.resent"
+	SpoolStale        ID = "spool.stale"
 	LeaseTimeout      ID = "lease.timeout"
+	LeaseRefused      ID = "lease.refused"
 	LeaseLost         ID = "lease.lost"
 	StoreUnavailable  ID = "store.unavailable"
 )
@@ -115,8 +118,7 @@ var table = []Info{
 	{DecisionOverride, "", "the screened_out candidate goes back to observed"},
 	{DecisionProposalApprove, "", "the edit proposal is approved on the urgent lane"},
 	{DecisionProposalDecline, "", "the edit proposal is declined and nothing is changed"},
-	{DecisionRelease, "", "the held item is released to run again"},
-	{DecisionKeep, "", "the held item stays held"},
+	{DecisionRelease, "", "the stopped item is released to run again"},
 	{DecisionMalformed, Parse, "the decision is not one well-formed JSON object of the expected shape"},
 	{DecisionItemUnknown, Parse, "no item with that identifier is waiting for a decision"},
 	{DecisionOutcomeUnknown, Parse, "the outcome is not one Countersign knows"},
@@ -133,7 +135,11 @@ var table = []Info{
 	{SpoolTimeout, Timeout, "Muster did not confirm in time; the record stays in the spool and is retried in order"},
 	{SpoolRefused, Parse, "Muster refused the record; the item stays in its current state"},
 	{SpoolNoLease, Parse, "the record is for an item that was added by hand and has no lease, so it cannot be sent"},
+	{SpoolLeaseNotHeld, Parse, "the lease is no longer held; the decision is kept and goes out again when Muster offers the item again"},
+	{SpoolResent, "", "the item was leased again, so the waiting decision goes out under the new lease"},
+	{SpoolStale, Parse, "the item came back changed, so the waiting decision no longer applies"},
 	{LeaseTimeout, Timeout, "Muster did not answer a lease or heartbeat in time"},
+	{LeaseRefused, Parse, "Muster refused a lease or heartbeat call; nothing was changed"},
 	{LeaseLost, "", "the lease on a waiting item ended, so it left the inbox"},
 	{StoreUnavailable, Timeout, "the local spool could not be read or written"},
 }

@@ -2,7 +2,7 @@
 // never decides anything. Each tick it:
 //
 //  1. sends the spooled results to Muster, oldest first, stopping at the
-//     first one Muster does not confirm;
+//     first one Muster gives no usable answer to;
 //  2. sends a heartbeat for every lease it holds, and lets go of items whose
 //     lease is no longer held;
 //  3. leases until Muster has nothing more or the inbox is full, checking
@@ -18,7 +18,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ClearedStack/countersign/internal/item"
 	"github.com/ClearedStack/countersign/internal/muster"
 	"github.com/ClearedStack/countersign/internal/record"
 	"github.com/ClearedStack/countersign/internal/rule"
@@ -99,31 +98,45 @@ func (w *Worker) Tick(ctx context.Context) bool {
 	return ok
 }
 
-// flush sends spooled results in order. A result leaves the spool as
-// confirmed only when Muster answers 200. One that Muster refuses is set
-// aside in the log, marked refused, and the item stays as it was. One that
-// gets no usable answer stays at the front, and everything behind it waits.
+// flush sends spooled results in order.
+//
+//   - 200: the result leaves the spool as delivered.
+//   - The lease is not held: a decision is kept, out of the way, until Muster
+//     offers the item again. Anything else is set aside.
+//   - Any other refusal: the result is set aside in the log, marked refused,
+//     and the item stays as it was.
+//   - No usable answer, or "try later": the result stays at the front, and
+//     everything behind it waits.
 func (w *Worker) flush(ctx context.Context) bool {
 	entries, err := w.Store.Outbox()
 	if err != nil {
 		w.emit(rule.StoreUnavailable, "", 0)
 		return false
 	}
+	setAside := func(e store.Entry, id rule.ID) bool {
+		if w.Store.Refuse(e.Seq, rule.Fail(id, e.Record.Item).Fingerprint()) != nil {
+			w.emit(rule.StoreUnavailable, "", 0)
+			return false
+		}
+		w.emit(id, e.Record.Item, e.Seq)
+		return true
+	}
 	for _, e := range entries {
 		rec := e.Record
-		if e.Lease == "" {
+		if e.Status == store.Unleased {
+			continue // waiting for the item to be leased again
+		}
+		if e.Lease == "" && rec.Call != record.Release {
 			// Added by hand: there is no lease to send it under.
-			if w.Store.Refuse(e.Seq, rule.Fail(rule.SpoolNoLease, rec.Item).Fingerprint()) != nil {
-				w.emit(rule.StoreUnavailable, "", 0)
+			if !setAside(e, rule.SpoolNoLease) {
 				return false
 			}
-			w.emit(rule.SpoolNoLease, rec.Item, e.Seq)
 			continue
 		}
 		err := w.call(ctx, func(ctx context.Context) error {
 			switch rec.Call {
 			case record.Complete:
-				result, err := Result(rec)
+				result, err := json.Marshal(rec)
 				if err != nil {
 					return muster.ErrRefused
 				}
@@ -132,6 +145,8 @@ func (w *Worker) flush(ctx context.Context) bool {
 				return w.Queue.Fail(ctx, e.Lease, rule.Code(rec.Code))
 			case record.NeedsSubtool:
 				return w.Queue.NeedsSubtool(ctx, e.Lease)
+			case record.Release:
+				return w.Queue.Release(ctx, rec.Item)
 			}
 			return muster.ErrRefused
 		})
@@ -142,12 +157,16 @@ func (w *Worker) flush(ctx context.Context) bool {
 				return false
 			}
 			w.emit(rule.SpoolAcknowledged, rec.Item, e.Seq)
-		case errors.Is(err, muster.ErrRefused):
-			if w.Store.Refuse(e.Seq, rule.Fail(rule.SpoolRefused, rec.Item).Fingerprint()) != nil {
+		case errors.Is(err, muster.ErrLeaseNotHeld) && rec.Call == record.Complete:
+			if w.Store.Unlease(e.Seq) != nil {
 				w.emit(rule.StoreUnavailable, "", 0)
 				return false
 			}
-			w.emit(rule.SpoolRefused, rec.Item, e.Seq)
+			w.emit(rule.SpoolLeaseNotHeld, rec.Item, e.Seq)
+		case errors.Is(err, muster.ErrLeaseNotHeld), errors.Is(err, muster.ErrRefused):
+			if !setAside(e, rule.SpoolRefused) {
+				return false
+			}
 		default:
 			w.timedOut(ctx, rule.SpoolTimeout, rec.Item, e.Seq)
 			return false
@@ -171,12 +190,18 @@ func (w *Worker) hold(ctx context.Context) bool {
 		err := w.call(ctx, func(ctx context.Context) error { return w.Queue.Heartbeat(ctx, h.Lease) })
 		switch {
 		case err == nil:
-		case errors.Is(err, muster.ErrRefused):
+		case errors.Is(err, muster.ErrLeaseNotHeld):
 			if w.Store.Drop(h.Item.ID) != nil {
 				w.emit(rule.StoreUnavailable, "", 0)
 				return false
 			}
 			w.emit(rule.LeaseLost, h.Item.ID, 0)
+		case errors.Is(err, muster.ErrRefused):
+			// Refused for a reason that is not this lease, such as the
+			// credential. Nothing is known about the lease, so nothing is
+			// dropped.
+			w.emit(rule.LeaseRefused, "", 0)
+			return false
 		default:
 			w.timedOut(ctx, rule.LeaseTimeout, "", 0)
 			return false
@@ -186,7 +211,7 @@ func (w *Worker) hold(ctx context.Context) bool {
 }
 
 // lease takes on items until Muster has no more or the inbox is full. It
-// reports whether anything was spooled for Muster, and whether Muster
+// reports whether anything is in the spool to send, and whether Muster
 // answered.
 func (w *Worker) lease(ctx context.Context) (spooled, ok bool) {
 	pending, err := w.Store.Pending()
@@ -204,7 +229,12 @@ func (w *Worker) lease(ctx context.Context) (spooled, ok bool) {
 			body, err = w.Queue.Lease(ctx)
 			return err
 		})
-		if err != nil {
+		switch {
+		case err == nil:
+		case errors.Is(err, muster.ErrRefused), errors.Is(err, muster.ErrLeaseNotHeld):
+			w.emit(rule.LeaseRefused, "", 0)
+			return spooled, false
+		default:
 			w.timedOut(ctx, rule.LeaseTimeout, "", 0)
 			return spooled, false
 		}
@@ -215,9 +245,18 @@ func (w *Worker) lease(ctx context.Context) (spooled, ok bool) {
 		if perr == nil {
 			it, ierr := l.Item()
 			if ierr == nil {
-				if w.Store.Accept(l.Token, it) != nil {
+				arrival, err := w.Store.Accept(l.Token, it)
+				if err != nil {
 					w.emit(rule.StoreUnavailable, "", 0)
 					return spooled, false
+				}
+				switch {
+				case arrival.Resent:
+					spooled = true
+					w.emit(rule.SpoolResent, it.ID, 0)
+					continue
+				case arrival.Stale:
+					w.emit(rule.SpoolStale, it.ID, 0)
 				}
 				held++
 				w.emit(rule.IntakeAccept, it.ID, 0)
@@ -237,17 +276,4 @@ func (w *Worker) lease(ctx context.Context) (spooled, ok bool) {
 		w.emit(perr.Rule, perr.Item, 0)
 	}
 	return spooled, true
-}
-
-// Result is what a decision sends to Muster as the result of the step. For
-// an item or a proposal it is the whole decision record. For a held item
-// Muster's contract takes exactly one field, the decision, and refuses
-// anything else.
-func Result(rec record.Record) ([]byte, error) {
-	if rec.Kind == item.Release {
-		return json.Marshal(struct {
-			Decision item.Outcome `json:"decision"`
-		}{rec.Outcome})
-	}
-	return json.Marshal(rec)
 }

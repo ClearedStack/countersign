@@ -6,6 +6,8 @@
 //	countersign [-spool DIR] show ID
 //	countersign [-spool DIR] decide ID OUTCOME [-reason TEXT] [-tool TEXT] [-parent TEXT] [-blocker TEXT]
 //	countersign [-spool DIR] decide -f FILE
+//	countersign [-spool DIR] release ID [-reason TEXT]
+//	countersign [-spool DIR] held
 //	countersign [-spool DIR] log
 //	countersign [-spool DIR] run -muster URL [-token-file FILE] [-interval D]
 //	countersign [-spool DIR] run -standin FILE [-interval D] [-ticks N]
@@ -30,6 +32,7 @@ import (
 	"github.com/ClearedStack/countersign/internal/decide"
 	"github.com/ClearedStack/countersign/internal/item"
 	"github.com/ClearedStack/countersign/internal/muster"
+	"github.com/ClearedStack/countersign/internal/record"
 	"github.com/ClearedStack/countersign/internal/rule"
 	"github.com/ClearedStack/countersign/internal/store"
 	"github.com/ClearedStack/countersign/internal/worker"
@@ -59,6 +62,9 @@ usage: countersign [-spool DIR] COMMAND
   show ID               show one waiting item and the outcomes allowed for it
   decide ID OUTCOME     record a decision; flags: -reason -tool -parent -blocker
   decide -f FILE        record a decision given as JSON ("-" is standard input)
+  release ID            let an item run again that a worker stopped with E_PARSE;
+                        flag: -reason (kept in the local log only)
+  held                  list the items Countersign itself stopped with E_PARSE
   log                   list recent records and whether Muster has confirmed them
   run -muster URL       run the lease loop against Muster; -token-file names the
                         ServiceAccount token, read afresh for every call
@@ -69,7 +75,6 @@ usage: countersign [-spool DIR] COMMAND
 outcomes: approve link merge park reject (a scored item)
           override (a screened_out item)
           approve decline (an edit proposal)
-          release keep (an item a worker stopped with E_PARSE)
 `
 
 type env struct {
@@ -116,7 +121,7 @@ func run(args []string, e env) int {
 	case "help":
 		fmt.Fprint(e.stdout, usage)
 		return exitOK
-	case "add", "list", "show", "decide", "log", "run":
+	case "add", "list", "show", "decide", "release", "held", "log", "run":
 	default:
 		fmt.Fprint(e.stderr, usage)
 		return exitUsage
@@ -135,6 +140,10 @@ func run(args []string, e env) int {
 		return cmdShow(e, st, rest)
 	case "decide":
 		return cmdDecide(e, st, rest)
+	case "release":
+		return cmdRelease(e, st, rest)
+	case "held":
+		return cmdHeld(e, st)
 	case "log":
 		return cmdLog(e, st)
 	default:
@@ -214,7 +223,7 @@ func cmdAdd(e env, st *store.Store, args []string) int {
 	}
 	// An item added by hand has no lease, so a decision on it is recorded
 	// here and cannot be sent to Muster.
-	if err := st.Accept("", it); err != nil {
+	if _, err := st.Accept("", it); err != nil {
 		return public(e, err)
 	}
 	printJSON(e.stdout, it, true)
@@ -248,8 +257,6 @@ func cmdList(e env, st *store.Store) int {
 		switch {
 		case it.Kind == item.Proposal:
 			detail, summary = it.EditKind+" "+it.Target, it.Change
-		case it.Kind == item.Release:
-			detail, summary = "held by "+it.HeldWorker+", "+it.HeldCode, it.Title
 		case it.State == item.Scored:
 			detail, summary = fmt.Sprintf("score %d, recommended %s", *it.Score, it.Recommendation), it.Title
 		default:
@@ -329,6 +336,66 @@ func cmdDecide(e env, st *store.Store, args []string) int {
 		return public(e, err)
 	}
 	printJSON(e.stdout, res, true)
+	return exitOK
+}
+
+func cmdRelease(e env, st *store.Store, args []string) int {
+	fs := flag.NewFlagSet("release", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	reason := fs.String("reason", "", "")
+	var words []string
+	for len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return usageError(e, "release: unknown flag; see countersign help")
+		}
+		args = fs.Args()
+		if len(args) > 0 {
+			words = append(words, args[0])
+			args = args[1:]
+		}
+	}
+	if len(words) != 1 {
+		return usageError(e, "release takes one item identifier")
+	}
+	res, err := st.Release(words[0], *reason, e.now())
+	if err != nil {
+		return public(e, err)
+	}
+	printJSON(e.stdout, res, true)
+	return exitOK
+}
+
+// cmdHeld lists the items this Countersign stopped with E_PARSE and has not
+// since released, as far back as the local log goes. Items other workers
+// stopped are not known here.
+func cmdHeld(e env, st *store.Store) int {
+	entries, err := st.Log()
+	if err != nil {
+		return public(e, err)
+	}
+	type held struct{ at, rule string }
+	stopped := map[string]held{}
+	var order []string
+	for _, en := range entries {
+		rec := en.Record
+		switch {
+		case rec.Call == record.Fail && rec.Code == string(rule.Parse) && en.Status == store.Acknowledged && rec.Item != "":
+			if _, seen := stopped[rec.Item]; !seen {
+				order = append(order, rec.Item)
+			}
+			stopped[rec.Item] = held{rec.At, rec.Rule}
+		case rec.Call == record.Release && en.Status != store.Refused:
+			delete(stopped, rec.Item)
+		}
+	}
+	tw := tabwriter.NewWriter(e.stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tSTOPPED\tRULE")
+	for _, id := range order {
+		if h, ok := stopped[id]; ok {
+			fmt.Fprintf(tw, "%s\t%s\t%s\n", id, h.at, h.rule)
+		}
+	}
+	tw.Flush()
 	return exitOK
 }
 

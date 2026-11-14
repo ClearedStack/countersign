@@ -1,0 +1,58 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "lease.refused",
+          "code": "E_PARSE",
+          "fingerprint": "633c3170f7aedfd6"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0082"
+        }
+      ]
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "lease.refused",
+          "code": "E_PARSE",
+          "fingerprint": "633c3170f7aedfd6"
+        }
+      ]
+    },
+    {
+      "do": "tick"
+    }
+  ],
+  "pending": [
+    "PA-0082"
+  ],
+  "log": [],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0082",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [],
+    "dispatched": []
+  }
+}

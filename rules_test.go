@@ -29,6 +29,7 @@ import (
 //	lease.json                    Muster's answer to a lease call, as received
 //	item.json                     an item added by hand
 //	item.json + decision.json     the owner deciding on that item
+//	release.json                  the owner releasing a stopped item
 //	scenario.json                 a run of the worker against the stand-in
 //
 // want.json is the exact output expected. Run "go test . -update" to rewrite
@@ -125,6 +126,9 @@ func TestSavedExamples(t *testing.T) {
 				case exists(dir, "decision.json"):
 					o := runDecision(t, dir)
 					got, rules = o, []rule.ID{o.Rule}
+				case exists(dir, "release.json"):
+					o := runRelease(t, dir)
+					got, rules = o, []rule.ID{o.Rule}
 				case exists(dir, "lease.json"):
 					o := runLease(t, dir)
 					got, rules = o, []rule.ID{o.Rule}
@@ -209,7 +213,7 @@ func runLease(t *testing.T, dir string) outcome {
 		}
 		return o
 	}
-	if err := st.Accept(l.Token, it); err != nil {
+	if _, err := st.Accept(l.Token, it); err != nil {
 		t.Fatal(err)
 	}
 	pending, err := st.Pending()
@@ -246,6 +250,23 @@ func runDecision(t *testing.T, dir string) outcome {
 	return outcome{Rule: res.Rule, Record: &res.Record}
 }
 
+// runRelease records a release given as {"item": ..., "reason": ...}.
+func runRelease(t *testing.T, dir string) outcome {
+	t.Helper()
+	var in struct {
+		Item   string `json:"item"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(read(t, dir, "release.json"), &in); err != nil {
+		t.Fatal(err)
+	}
+	res, perr := decide.Release(in.Item, in.Reason, fixedTime)
+	if perr != nil {
+		return refusal(perr)
+	}
+	return outcome{Rule: res.Rule, Record: &res.Record}
+}
+
 // A scenario seeds the stand-in and then runs steps in order.
 type scenario struct {
 	Muster muster.Seed `json:"muster"`
@@ -253,12 +274,17 @@ type scenario struct {
 }
 
 type step struct {
-	// Do is one of: tick, decide, add, faults, advance, break.
+	// Do is one of: tick, decide, release, add, faults, requeue, replace,
+	// advance, break.
 	Do       string          `json:"do"`
 	Decision json.RawMessage `json:"decision,omitempty"` // decide
+	ID       string          `json:"id,omitempty"`       // release
+	Reason   string          `json:"reason,omitempty"`   // release
 	Item     json.RawMessage `json:"item,omitempty"`     // add
 	Timeouts int             `json:"timeouts,omitempty"` // faults
 	LostAcks int             `json:"lost_acks,omitempty"`
+	Refusals int             `json:"refusals,omitempty"`
+	Step     json.RawMessage `json:"step,omitempty"`    // replace
 	Seconds  int             `json:"seconds,omitempty"` // advance
 }
 
@@ -339,13 +365,29 @@ func runScenario(t *testing.T, dir string) (scenarioResult, []rule.ID) {
 				out.outcome = &o
 				break
 			}
-			if err := st.Accept("", it); err != nil {
+			if _, err := st.Accept("", it); err != nil {
 				out.outcome = publicOutcome(err)
 				break
 			}
 			out.outcome = &outcome{Rule: rule.IntakeAccept, Item: &it}
+		case "release":
+			r, err := st.Release(s.ID, s.Reason, now)
+			if err != nil {
+				out.outcome = publicOutcome(err)
+				break
+			}
+			out.outcome = &outcome{Rule: r.Rule, Record: &r.Record}
 		case "faults":
-			queue.SetFaults(s.Timeouts, s.LostAcks)
+			queue.SetFaults(muster.Faults{Timeouts: s.Timeouts, LostAcks: s.LostAcks, Refusals: s.Refusals})
+		case "requeue":
+			// Every lease is taken away, as when another worker took the
+			// steps and gave them back.
+			queue.Requeue()
+		case "replace":
+			// A waiting step comes back changed.
+			if err := queue.Replace(s.Step); err != nil {
+				t.Fatal(err)
+			}
 		case "advance":
 			now = now.Add(time.Duration(s.Seconds) * time.Second)
 		case "break":

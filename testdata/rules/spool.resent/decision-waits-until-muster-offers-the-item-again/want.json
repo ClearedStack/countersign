@@ -1,0 +1,146 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0077"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "eea9556605178d899f46e34ca865462f",
+        "worker": "countersign",
+        "item": "PA-0077",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "requeue"
+    },
+    {
+      "do": "faults"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.timeout",
+          "code": "E_TIMEOUT",
+          "item": "PA-0077",
+          "seq": 1,
+          "fingerprint": "39f6ae6587c84c15"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.timeout",
+          "code": "E_TIMEOUT",
+          "item": "PA-0077",
+          "seq": 1,
+          "fingerprint": "39f6ae6587c84c15"
+        }
+      ]
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.lease_not_held",
+          "code": "E_PARSE",
+          "item": "PA-0077",
+          "seq": 1,
+          "fingerprint": "717ef7e79235d5a8"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.resent",
+          "item": "PA-0077"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0077",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0077.2.2",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "eea9556605178d899f46e34ca865462f",
+        "worker": "countersign",
+        "item": "PA-0077",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0077",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0077.2.2",
+        "id": "PA-0077",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "eea9556605178d899f46e34ca865462f",
+          "worker": "countersign",
+          "item": "PA-0077",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

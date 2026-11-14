@@ -1,5 +1,0 @@
-{
-  "rule": "decision.outcome_not_allowed",
-  "code": "E_PARSE",
-  "error": "E_PARSE decision.outcome_not_allowed PA-0001: that outcome is not allowed for an item of this kind and state [fp 33dd759e166f6655]"
-}

@@ -37,6 +37,9 @@ type Seed struct {
 	// LostAcks is how many results are applied and then reported as failed,
 	// as when the confirmation is lost on the way back.
 	LostAcks int `json:"lost_acks"`
+	// Refusals is how many calls are refused outright before any succeeds,
+	// as when the credential is not accepted.
+	Refusals int `json:"refusals"`
 }
 
 // RawStep is a lease answer given as text.
@@ -55,7 +58,6 @@ const (
 
 type entry struct {
 	id     string
-	kind   string
 	fields map[string]json.RawMessage // nil for a raw step
 	raw    string
 	state  string
@@ -78,10 +80,8 @@ type Dispatch struct {
 	Lane   item.Lane `json:"lane"`
 }
 
-// ItemView is one step as the stand-in sees it. Kind is given for a release
-// step, which shares its identifier with the item it is about.
+// ItemView is one step as the stand-in sees it.
 type ItemView struct {
-	Kind   string `json:"kind,omitempty"`
 	ID     string `json:"id"`
 	State  string `json:"state,omitempty"`
 	Lane   string `json:"lane,omitempty"`
@@ -90,13 +90,12 @@ type ItemView struct {
 
 // Accepted is one call that ended a lease, as the stand-in recorded it.
 type Accepted struct {
-	Call     string         `json:"call"`
-	Lease    string         `json:"lease"`
-	ID       string         `json:"id"`
-	State    string         `json:"state,omitempty"`
-	Code     string         `json:"code,omitempty"`
-	Decision string         `json:"decision,omitempty"`
-	Result   *record.Record `json:"result,omitempty"`
+	Call   string         `json:"call"`
+	Lease  string         `json:"lease,omitempty"`
+	ID     string         `json:"id"`
+	State  string         `json:"state,omitempty"`
+	Code   string         `json:"code,omitempty"`
+	Result *record.Record `json:"result,omitempty"`
 }
 
 // Snapshot is everything the stand-in holds, for tests and saved examples.
@@ -121,6 +120,7 @@ type StandIn struct {
 	dispatched []Dispatch
 	timeouts   int
 	lostAcks   int
+	refusals   int
 }
 
 // ErrSeed is returned when a seed cannot be used.
@@ -128,20 +128,16 @@ var ErrSeed = errors.New("muster: the stand-in seed is not usable")
 
 // NewStandIn builds a stand-in from a seed. now is the clock it uses.
 func NewStandIn(seed Seed, now func() time.Time) (*StandIn, error) {
-	s := &StandIn{now: now, ownership: map[string]bool{}, timeouts: seed.Timeouts, lostAcks: seed.LostAcks}
+	s := &StandIn{now: now, ownership: map[string]bool{}, timeouts: seed.Timeouts, lostAcks: seed.LostAcks, refusals: seed.Refusals}
 	for _, t := range seed.Ownership {
 		s.ownership[t] = true
 	}
 	ids := map[string]bool{}
 	add := func(e *entry) error {
-		key := e.id
-		if e.kind == string(item.Release) {
-			key = "release:" + e.id
-		}
-		if !rule.SafeID(e.id) || ids[key] {
+		if !rule.SafeID(e.id) || ids[e.id] {
 			return ErrSeed
 		}
-		ids[key] = true
+		ids[e.id] = true
 		e.status = StatusWaiting
 		s.items = append(s.items, e)
 		return nil
@@ -153,7 +149,6 @@ func NewStandIn(seed Seed, now func() time.Time) (*StandIn, error) {
 		}
 		e := &entry{fields: fields}
 		json.Unmarshal(fields["id"], &e.id)
-		json.Unmarshal(fields["kind"], &e.kind)
 		json.Unmarshal(fields["state"], &e.state)
 		json.Unmarshal(fields["lane"], &e.lane)
 		if err := add(e); err != nil {
@@ -177,23 +172,74 @@ func ParseSeed(data []byte) (Seed, error) {
 	return seed, nil
 }
 
-// SetFaults changes how many of the next calls go unanswered, and how many
-// of the next results are applied without the confirmation getting back.
-func (s *StandIn) SetFaults(timeouts, lostAcks int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.timeouts, s.lostAcks = timeouts, lostAcks
+// Faults are things going wrong that no request can cause.
+type Faults struct {
+	Timeouts int `json:"timeouts"`  // calls that get no answer
+	LostAcks int `json:"lost_acks"` // results applied, confirmation lost
+	Refusals int `json:"refusals"`  // calls refused outright
 }
 
-func (s *StandIn) down(ctx context.Context) bool {
+// SetFaults replaces the faults still to come.
+func (s *StandIn) SetFaults(f Faults) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.timeouts, s.lostAcks, s.refusals = f.Timeouts, f.LostAcks, f.Refusals
+}
+
+// Requeue takes every lease away, as when another worker took the steps and
+// gave them back: the steps are waiting again and the old leases are no
+// longer held.
+func (s *StandIn) Requeue() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range s.items {
+		if e.status == StatusLeased || (e.status == StatusWaiting && e.token != "") {
+			e.status, e.token = StatusWaiting, ""
+		}
+	}
+}
+
+// Replace swaps the content of a step for another, as when an earlier
+// worker's result was corrected. A stopped item stays stopped. Any other
+// step is waiting again, and its old lease is no longer held. step is
+// written as in a seed and must name a step the stand-in has.
+func (s *StandIn) Replace(step json.RawMessage) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var fields map[string]json.RawMessage
+	var id string
+	if json.Unmarshal(step, &fields) != nil || json.Unmarshal(fields["id"], &id) != nil {
+		return ErrSeed
+	}
+	for _, e := range s.items {
+		if e.id == id && e.status != StatusClosed {
+			e.fields, e.raw, e.state, e.lane = fields, "", "", ""
+			json.Unmarshal(fields["state"], &e.state)
+			json.Unmarshal(fields["lane"], &e.lane)
+			if e.status != StatusHeld {
+				e.status = StatusWaiting
+			}
+			e.token, e.parsed = "", nil
+			return nil
+		}
+	}
+	return ErrSeed
+}
+
+// fault applies the faults that come before a call is looked at.
+func (s *StandIn) fault(ctx context.Context) error {
 	if ctx.Err() != nil {
-		return true
+		return ErrUnreachable
 	}
 	if s.timeouts > 0 {
 		s.timeouts--
-		return true
+		return ErrUnreachable
 	}
-	return false
+	if s.refusals > 0 {
+		s.refusals--
+		return ErrRefused
+	}
+	return nil
 }
 
 func (s *StandIn) byToken(token string) *entry {
@@ -223,8 +269,8 @@ func (s *StandIn) expire() {
 func (s *StandIn) Lease(ctx context.Context) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.down(ctx) {
-		return nil, ErrUnreachable
+	if err := s.fault(ctx); err != nil {
+		return nil, err
 	}
 	s.expire()
 	var free []*entry
@@ -242,10 +288,7 @@ func (s *StandIn) Lease(ctx context.Context) ([]byte, error) {
 	e := free[0]
 	s.leases++
 	e.attempt++
-	e.token = e.id + "." + strconv.Itoa(s.leases)
-	if e.kind == string(item.Release) {
-		e.token = "release:" + e.token
-	}
+	e.token = e.id + "." + strconv.Itoa(s.leases) + "." + strconv.Itoa(e.attempt)
 	e.status, e.until = StatusLeased, s.now().Add(LeaseTTL)
 
 	var body []byte
@@ -272,13 +315,13 @@ func (s *StandIn) Lease(ctx context.Context) ([]byte, error) {
 func (s *StandIn) Heartbeat(ctx context.Context, lease string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.down(ctx) {
-		return ErrUnreachable
+	if err := s.fault(ctx); err != nil {
+		return err
 	}
 	s.expire()
 	e := s.byToken(lease)
 	if e == nil || e.token != lease || e.status != StatusLeased {
-		return ErrRefused
+		return ErrLeaseNotHeld
 	}
 	e.until = s.now().Add(LeaseTTL)
 	return nil
@@ -289,23 +332,23 @@ func (s *StandIn) Heartbeat(ctx context.Context, lease string) error {
 func (s *StandIn) end(ctx context.Context, lease, endState string, apply func(*entry) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.down(ctx) {
-		return ErrUnreachable
+	if err := s.fault(ctx); err != nil {
+		return err
 	}
 	s.expire()
 	e := s.byToken(lease)
 	if e == nil {
-		return ErrRefused
+		return ErrLeaseNotHeld
 	}
 	if e.endToken == lease {
 		if e.endState == endState {
 			return nil // the same call again: the same answer, nothing done twice
 		}
-		return ErrRefused
+		return ErrLeaseNotHeld // the lease has ended
 	}
 	// A lease that ran out still counts until the step is taken again.
 	if e.status != StatusLeased && e.status != StatusWaiting {
-		return ErrRefused
+		return ErrLeaseNotHeld
 	}
 	if err := apply(e); err != nil {
 		return err
@@ -321,9 +364,6 @@ func (s *StandIn) end(ctx context.Context, lease, endState string, apply func(*e
 // Complete implements Queue. It checks the decision for itself and does not
 // trust that Countersign already did.
 func (s *StandIn) Complete(ctx context.Context, lease string, state item.State, result []byte) error {
-	if e := s.peek(lease); e != nil && e.kind == string(item.Release) {
-		return s.release(ctx, lease, state, result)
-	}
 	return s.end(ctx, lease, "complete "+string(state), func(e *entry) error {
 		it := e.parsed
 		if it == nil {
@@ -368,77 +408,13 @@ func (s *StandIn) Complete(ctx context.Context, lease string, state item.State, 
 	})
 }
 
-// peek finds the step a lease belongs to, without changing anything.
-func (s *StandIn) peek(lease string) *entry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.byToken(lease)
-}
-
-// release ends a release step with the owner's decision. The result must be
-// exactly {"decision": "release"} or {"decision": "keep"}, and the state the
-// one the step was given with.
-func (s *StandIn) release(ctx context.Context, lease string, state item.State, result []byte) error {
-	var r struct {
-		Decision *string `json:"decision"`
-	}
-	bad := strictjson.Decode(result, &r) != nil || r.Decision == nil ||
-		(*r.Decision != string(item.LetGo) && *r.Decision != string(item.Keep))
-	decision := ""
-	if !bad {
-		decision = *r.Decision
-	}
-	return s.end(ctx, lease, "complete "+string(state)+" "+decision, func(e *entry) error {
-		if bad || string(state) != e.state {
-			return ErrRefused
-		}
-		e.status = StatusClosed
-		s.ledger = append(s.ledger, Accepted{Call: record.Complete, Lease: lease, ID: e.id, State: e.state, Decision: decision})
-		if decision != string(item.LetGo) {
-			return nil // kept: nothing offers the item again
-		}
-		// The item's own step goes back to its worker, at the end of the
-		// urgent lane.
-		for i, held := range s.items {
-			if held.id == e.id && held.kind != string(item.Release) && held.status == StatusHeld {
-				held.status, held.lane = StatusWaiting, string(item.Urgent)
-				if held.fields != nil {
-					held.fields["lane"], _ = json.Marshal(held.lane)
-				}
-				s.items = append(append(s.items[:i:i], s.items[i+1:]...), held)
-				break
-			}
-		}
-		return nil
-	})
-}
-
 // Fail implements Queue.
 func (s *StandIn) Fail(ctx context.Context, lease string, code rule.Code) error {
 	return s.end(ctx, lease, "fail "+string(code), func(e *entry) error {
-		switch {
-		case code == rule.Parse && e.kind == string(item.Release):
-			return ErrRefused // a release step can only be put back
-		case code == rule.Parse:
-			e.status = StatusHeld // keeps its state, not offered again
-			open := false
-			for _, other := range s.items {
-				open = open || (other.id == e.id && other.kind == string(item.Release) && other.status != StatusClosed)
-			}
-			if e.kind == string(item.Candidate) && !open {
-				// The owner is given a release step for it.
-				held, _ := json.Marshal(map[string]string{"worker": record.Worker, "code": string(rule.Parse)})
-				results, _ := json.Marshal(map[string]json.RawMessage{"held": held})
-				quote := func(v string) json.RawMessage { b, _ := json.Marshal(v); return b }
-				s.items = append(s.items, &entry{
-					id: e.id, kind: string(item.Release), state: e.state, lane: string(item.Normal), status: StatusWaiting,
-					fields: map[string]json.RawMessage{
-						"kind": quote(string(item.Release)), "id": quote(e.id), "state": quote(e.state),
-						"lane": quote(string(item.Normal)), "results": results,
-					},
-				})
-			}
-		case code == rule.Timeout:
+		switch code {
+		case rule.Parse:
+			e.status = StatusHeld // keeps its state, not offered again until released
+		case rule.Timeout:
 			e.status = StatusWaiting // stays in the queue to be tried again
 		default:
 			return ErrRefused
@@ -448,6 +424,34 @@ func (s *StandIn) Fail(ctx context.Context, lease string, code rule.Code) error 
 	})
 }
 
+// Release implements Queue. A stopped item keeps its state, and its step
+// goes back to its worker at the end of the urgent lane. An item that is not
+// stopped is refused.
+func (s *StandIn) Release(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fault(ctx); err != nil {
+		return err
+	}
+	for i, e := range s.items {
+		if e.id != id || e.status != StatusHeld {
+			continue
+		}
+		e.status, e.lane, e.token = StatusWaiting, string(item.Urgent), ""
+		if e.fields != nil {
+			e.fields["lane"], _ = json.Marshal(e.lane)
+		}
+		s.items = append(append(s.items[:i:i], s.items[i+1:]...), e)
+		s.ledger = append(s.ledger, Accepted{Call: record.Release, ID: e.id, State: e.state})
+		if s.lostAcks > 0 {
+			s.lostAcks--
+			return ErrUnreachable
+		}
+		return nil
+	}
+	return ErrRefused // that move is not allowed: the item is not stopped
+}
+
 // NeedsSubtool implements Queue. Muster's state table has no move to
 // needs_subtool from any state Countersign holds: a scored item waits for a
 // person, not for a rule, and a proposal cannot be paused. So the stand-in
@@ -455,8 +459,11 @@ func (s *StandIn) Fail(ctx context.Context, lease string, code rule.Code) error 
 func (s *StandIn) NeedsSubtool(ctx context.Context, lease string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.down(ctx) {
-		return ErrUnreachable
+	if err := s.fault(ctx); err != nil {
+		return err
+	}
+	if e := s.byToken(lease); e == nil || e.token != lease {
+		return ErrLeaseNotHeld
 	}
 	return ErrRefused
 }
@@ -476,11 +483,7 @@ func (s *StandIn) Snapshot() Snapshot {
 		if status == StatusLeased && !now.Before(e.until) {
 			status = StatusWaiting
 		}
-		view := ItemView{ID: e.id, State: e.state, Lane: e.lane, Status: status}
-		if e.kind == string(item.Release) {
-			view.Kind = e.kind
-		}
-		snap.Items = append(snap.Items, view)
+		snap.Items = append(snap.Items, ItemView{ID: e.id, State: e.state, Lane: e.lane, Status: status})
 	}
 	return snap
 }

@@ -150,7 +150,7 @@ func TestLeaseLoopOverHTTP(t *testing.T) {
 		t.Fatalf("first tick: %s", got)
 	}
 	pending, _ := st.Pending()
-	if len(pending) != 2 || pending[0].Item.ID != "EP-0001" || pending[0].Lease != "EP-0001.1" || pending[1].Lease != "PA-0001.2" {
+	if len(pending) != 2 || pending[0].Item.ID != "EP-0001" || pending[0].Lease != "EP-0001.1.1" || pending[1].Lease != "PA-0001.2.1" {
 		t.Fatalf("inbox: %+v", pending)
 	}
 	// Nothing new: heartbeats only.
@@ -192,89 +192,143 @@ func TestLeaseLoopOverHTTP(t *testing.T) {
 	}
 }
 
-// From Muster's own examples: the worker is handed the release step in
-// lease-release.json, the owner decides, and what the worker sends must be
-// the request in complete-release.json or complete-keep.json, exactly.
-func TestReleaseDecisionIsSentAsTheContractExample(t *testing.T) {
-	type example struct {
+// From Muster's own example: the owner releases a stopped item, and what the
+// worker sends must be the request in release.json, exactly. The reason the
+// owner gives stays here.
+func TestReleaseIsSentAsTheContractExample(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/contract/release.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ex struct {
 		Request struct {
 			Path string          `json:"path"`
 			Body json.RawMessage `json:"body"`
 		} `json:"request"`
 		Expect struct {
-			Status int             `json:"status"`
-			Body   json.RawMessage `json:"body"`
+			Body json.RawMessage `json:"body"`
 		} `json:"expect"`
 	}
-	load := func(name string) example {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join("../../testdata/contract", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var ex example
-		if err := json.Unmarshal(raw, &ex); err != nil {
-			t.Fatal(err)
-		}
-		return ex
+	if err := json.Unmarshal(raw, &ex); err != nil {
+		t.Fatal(err)
 	}
-	lease := load("lease-release.json")
+	var want bytes.Buffer
+	if err := json.Compact(&want, ex.Request.Body); err != nil {
+		t.Fatal(err)
+	}
+	var id struct {
+		ID string `json:"id"`
+	}
+	json.Unmarshal(ex.Request.Body, &id)
 
-	for file, outcome := range map[string]item.Outcome{"complete-release.json": item.LetGo, "complete-keep.json": item.Keep} {
-		want := load(file)
-		var wantBody bytes.Buffer
-		if err := json.Compact(&wantBody, want.Request.Body); err != nil {
-			t.Fatal(err)
+	sent := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		switch r.URL.Path {
+		case "/v1/lease":
+			w.WriteHeader(http.StatusNoContent)
+		case ex.Request.Path:
+			sent = string(b)
+			w.Write(ex.Expect.Body)
+		default:
+			t.Errorf("unexpected call to %s", r.URL.Path)
 		}
-		leases, sent := 0, ""
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b, _ := io.ReadAll(r.Body)
-			switch r.URL.Path {
-			case "/v1/lease":
-				leases++
-				if leases > 1 {
-					w.WriteHeader(http.StatusNoContent)
-					return
-				}
-				w.Write(lease.Expect.Body)
-			case "/v1/complete":
-				sent = string(b)
-				w.Write(want.Expect.Body)
-			default:
-				w.Write([]byte(`{}`))
-			}
-		}))
-		tokenPath := filepath.Join(t.TempDir(), "token")
-		if err := os.WriteFile(tokenPath, []byte("made-up-token"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		client, err := muster.NewHTTP(srv.URL, tokenPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		st, err := store.Open(t.TempDir())
-		if err != nil {
-			t.Fatal(err)
-		}
-		var events []Event
-		w := &Worker{Store: st, Queue: client, Now: func() time.Time { return at }, Log: func(ev Event) { events = append(events, ev) }}
+	}))
+	defer srv.Close()
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte("made-up-token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	client, err := muster.NewHTTP(srv.URL, tokenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events []Event
+	w := &Worker{Store: st, Queue: client, Now: func() time.Time { return at }, Log: func(ev Event) { events = append(events, ev) }}
 
-		w.Tick(context.Background())
-		pending, _ := st.Pending()
-		if len(pending) != 1 || pending[0].Item.Kind != item.Release || pending[0].Item.HeldWorker != "sextant" || pending[0].Lease != "release:PA-0001.2" {
-			t.Fatalf("%s: inbox after the lease: %+v (%s)", file, pending, rules(events))
-		}
-		if _, err := st.Decide(decide.Decision{Item: "PA-0001", Outcome: outcome, Reason: "A made-up note kept in the local log."}, at); err != nil {
-			t.Fatal(err)
-		}
+	if _, err := st.Release(id.ID, "A made-up note kept in the local log.", at); err != nil {
+		t.Fatal(err)
+	}
+	w.Tick(context.Background())
+	if sent != want.String() {
+		t.Errorf("the worker sent\n  %s\nand the contract's example is\n  %s", sent, want.String())
+	}
+	if got := rules(events); got != "spool.acknowledged" {
+		t.Errorf("events: %s", got)
+	}
+	if out, _ := st.Outbox(); len(out) != 0 {
+		t.Errorf("the release is still in the spool after a 200")
+	}
+}
+
+// A lease that is lost while a decision waits: the decision is kept, goes
+// out under the new lease, and the owner is not asked again.
+func TestDecisionSurvivesALostLease(t *testing.T) {
+	s := standIn(t, muster.Seed{}, scoredStep)
+	st, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events []Event
+	w := &Worker{Store: st, Queue: s, Now: func() time.Time { return at }, Log: func(ev Event) { events = append(events, ev) }}
+	tick := func() string {
 		events = nil
 		w.Tick(context.Background())
-		if sent != wantBody.String() {
-			t.Errorf("%s: the worker sent\n  %s\nand the contract's example is\n  %s", file, sent, wantBody.String())
-		}
-		if got := rules(events); got != "spool.acknowledged" {
-			t.Errorf("%s: %s", file, got)
-		}
-		srv.Close()
+		return rules(events)
+	}
+	if got := tick(); got != "intake.accept" {
+		t.Fatal(got)
+	}
+	if _, err := st.Decide(decide.Decision{Item: "PA-0001", Outcome: item.Approve}, at); err != nil {
+		t.Fatal(err)
+	}
+	s.Requeue() // the lease is gone before the decision is sent
+	if got := tick(); got != "spool.lease_not_held spool.resent spool.acknowledged" {
+		t.Errorf("tick: %s", got)
+	}
+	snap := s.Snapshot()
+	if len(snap.Ledger) != 1 || snap.Ledger[0].State != "approved" || snap.Ledger[0].Lease != "PA-0001.2.2" {
+		t.Errorf("ledger: %+v", snap.Ledger)
+	}
+	if pending, _ := st.Pending(); len(pending) != 0 {
+		t.Errorf("the owner was asked again: %+v", pending)
+	}
+}
+
+// A refused lease or heartbeat, such as a credential that is not accepted,
+// changes nothing: the inbox and the spool are kept.
+func TestRefusedCallsChangeNothing(t *testing.T) {
+	s := standIn(t, muster.Seed{}, scoredStep)
+	st, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events []Event
+	w := &Worker{Store: st, Queue: s, Now: func() time.Time { return at }, Log: func(ev Event) { events = append(events, ev) }}
+	tick := func() string {
+		events = nil
+		w.Tick(context.Background())
+		return rules(events)
+	}
+	s.SetFaults(muster.Faults{Refusals: 1})
+	if got := tick(); got != "lease.refused" {
+		t.Errorf("refused lease: %s", got)
+	}
+	if got := tick(); got != "intake.accept" {
+		t.Errorf("next tick: %s", got)
+	}
+	s.SetFaults(muster.Faults{Refusals: 1})
+	if got := tick(); got != "lease.refused" {
+		t.Errorf("refused heartbeat: %s", got)
+	}
+	if pending, _ := st.Pending(); len(pending) != 1 {
+		t.Errorf("a refused heartbeat emptied the inbox")
+	}
+	if events[0].Code != rule.Parse {
+		t.Errorf("event: %+v", events[0])
 	}
 }

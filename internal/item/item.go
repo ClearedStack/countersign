@@ -16,14 +16,12 @@ import (
 )
 
 // Kind is what sort of step this is. The values are Muster's: a candidate
-// tool is an "item", an edit proposal is a "proposal", and an item a worker
-// stopped with E_PARSE comes to the owner as a "release".
+// tool is an "item" and an edit proposal is a "proposal".
 type Kind string
 
 const (
 	Candidate Kind = "item"
 	Proposal  Kind = "proposal"
-	Release   Kind = "release"
 )
 
 // State is an item's state. The candidate states are the ones the platform's
@@ -49,13 +47,6 @@ const (
 	PendingApproval State = "pending_approval"
 	Declined        State = "declined"
 )
-
-// itemStates are the fourteen states an item can be in, and so the states a
-// held item can be held in.
-var itemStates = []State{
-	Discovered, Recorded, Observed, ScreenedOut, Scored, Approved, Building,
-	Live, Parked, Linked, Merged, Rejected, Retired, NeedsSubtool,
-}
 
 // Lane is a priority lane. Urgent is emptied first, then normal, then backfill.
 type Lane string
@@ -90,9 +81,6 @@ const (
 	Reject   Outcome = "reject"
 	Override Outcome = "override"
 	Decline  Outcome = "decline"
-	// For a held item: let it run again, or leave it held.
-	LetGo Outcome = "release"
-	Keep  Outcome = "keep"
 )
 
 type move struct {
@@ -123,18 +111,10 @@ var moves = map[place][]move{
 	},
 }
 
-func init() {
-	// A release step changes no state: the item keeps the state it is held
-	// in, whichever of the fourteen that is.
-	for _, s := range itemStates {
-		moves[place{Release, s}] = []move{{LetGo, s}, {Keep, s}}
-	}
-}
-
 // KnownOutcome reports whether o is an outcome at all.
 func KnownOutcome(o Outcome) bool {
 	switch o {
-	case Approve, Link, Merge, Park, Reject, Override, Decline, LetGo, Keep:
+	case Approve, Link, Merge, Park, Reject, Override, Decline:
 		return true
 	}
 	return false
@@ -181,7 +161,7 @@ var (
 // ValidID reports whether id has the form Muster gives that kind of item.
 func ValidID(kind Kind, id string) bool {
 	switch kind {
-	case Candidate, Release:
+	case Candidate:
 		return candidateID.MatchString(id)
 	case Proposal:
 		return proposalID.MatchString(id)
@@ -202,10 +182,6 @@ type Item struct {
 	Recommendation   State  `json:"recommendation,omitempty"`
 	SplitMergeReview bool   `json:"split_merge_review,omitempty"`
 	ScreenReason     string `json:"screen_reason,omitempty"`
-
-	// Held items. The worker that stopped, and the code it gave.
-	HeldWorker string `json:"held_worker,omitempty"`
-	HeldCode   string `json:"held_code,omitempty"`
 
 	// Edit proposals. The names are the ones Muster uses.
 	Target     string `json:"target,omitempty"`
@@ -286,14 +262,13 @@ func Check(it Item) *rule.Error {
 
 	proposalFields := it.Target != "" || it.Repository != "" || it.File != "" || it.EditKind != "" || it.Change != "" || it.Reason != ""
 	scoreFields := it.Score != nil || it.Recommendation != "" || it.SplitMergeReview || it.ScreenReason != ""
-	heldFields := it.HeldWorker != "" || it.HeldCode != ""
 
 	switch it.Kind {
 	case Candidate:
 		if !ValidID(Candidate, it.ID) {
 			return fail(rule.IntakeIDInvalid)
 		}
-		if proposalFields || heldFields {
+		if proposalFields {
 			return fail(rule.IntakeFieldUnexpected)
 		}
 		if !ValidLine(it.Title, MaxTitle) || !ValidText(it.ScreenReason, MaxText) {
@@ -329,7 +304,7 @@ func Check(it Item) *rule.Error {
 		if !ValidID(Proposal, it.ID) {
 			return fail(rule.IntakeIDInvalid)
 		}
-		if it.Title != "" || scoreFields || heldFields {
+		if it.Title != "" || scoreFields {
 			return fail(rule.IntakeFieldUnexpected)
 		}
 		if it.EditKind == "" || Blank(it.Target) || Blank(it.Change) {
@@ -349,26 +324,6 @@ func Check(it Item) *rule.Error {
 		case "DATA", "CONFIG", "ISSUE":
 		default:
 			note(rule.IntakeEditKindUnfamiliar)
-		}
-	case Release:
-		if !ValidID(Release, it.ID) {
-			return fail(rule.IntakeIDInvalid)
-		}
-		if proposalFields || scoreFields {
-			return fail(rule.IntakeFieldUnexpected)
-		}
-		if it.HeldWorker == "" || it.HeldCode == "" {
-			return fail(rule.IntakeFieldMissing)
-		}
-		if !ValidLine(it.Title, MaxTitle) || !rule.SafeID(it.HeldWorker) || !rule.SafeID(it.HeldCode) {
-			return fail(rule.IntakeTextInvalid)
-		}
-		known := false
-		for _, s := range itemStates {
-			known = known || s == it.State
-		}
-		if !known {
-			note(rule.IntakeStateUnfamiliar)
 		}
 	default:
 		return fail(rule.IntakeKindUnfamiliar)

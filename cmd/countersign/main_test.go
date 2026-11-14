@@ -232,3 +232,46 @@ func TestExampleSeedRuns(t *testing.T) {
 		t.Errorf("list:\n%s", r.stdout)
 	}
 }
+
+func TestHeldAndRelease(t *testing.T) {
+	spool := t.TempDir()
+	seed := filepath.Join(t.TempDir(), "seed.json")
+	// One item Assay scored without a total: broken, so Countersign stops it.
+	if err := os.WriteFile(seed, []byte(`{"steps":[
+		{"kind":"item","id":"PA-0001","state":"scored","lane":"normal","results":{"assay":{"recommendation":"Build"}}},
+		{"kind":"item","id":"PA-0002","state":"scored","lane":"normal","results":{"assay":{"total":82,"recommendation":"Build"}}}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := cs(t, spool, "", "run", "-standin", seed, "-interval", "1ms", "-ticks", "2"); r.code != exitOK ||
+		!strings.Contains(r.stderr, `"rule":"intake.field_missing","code":"E_PARSE","item":"PA-0001"`) ||
+		!strings.Contains(r.stderr, `"rule":"spool.acknowledged","item":"PA-0001","seq":1`) {
+		t.Fatalf("run: %+v", r)
+	}
+	r := cs(t, spool, "", "held")
+	want := "ID       STOPPED               RULE\nPA-0001  2026-01-05T10:00:00Z  intake.field_missing\n"
+	if r.code != exitOK || r.stdout != want {
+		t.Errorf("held:\n%s\nwant:\n%s", r.stdout, want)
+	}
+
+	for _, args := range [][]string{{"release", "EP-0001"}, {"release", "PA-01"}, {"release", "../x"}} {
+		if r := cs(t, spool, "", args...); r.code != exitError || !strings.HasPrefix(r.stderr, "E_PARSE decision.malformed") {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	for _, args := range [][]string{{"release"}, {"release", "PA-0001", "PA-0002"}, {"release", "PA-0001", "-force"}} {
+		if r := cs(t, spool, "", args...); r.code != exitUsage {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	r = cs(t, spool, "", "release", "PA-0001", "-reason", "Assay's result was corrected.")
+	if r.code != exitOK || !strings.Contains(r.stdout, `"rule": "decision.release"`) || !strings.Contains(r.stdout, `"call": "release"`) {
+		t.Fatalf("release: %+v", r)
+	}
+	// A release that is waiting to be sent takes the item off the list.
+	if r = cs(t, spool, "", "held"); r.stdout != "ID  STOPPED  RULE\n" {
+		t.Errorf("held after the release: %q", r.stdout)
+	}
+	if r = cs(t, spool, "", "log"); strings.Count(r.stdout, "\n") != 2 || !strings.Contains(r.stdout, `"seq":2,"status":"waiting","record":{"contract":"v1","call":"release"`) {
+		t.Errorf("log:\n%s", r.stdout)
+	}
+}

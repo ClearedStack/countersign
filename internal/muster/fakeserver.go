@@ -16,14 +16,13 @@ import (
 // maxRequest is the largest request body Muster reads.
 const maxRequest = 64 << 10
 
-// NewFakeServer serves Muster's five worker calls over HTTP on top of any
-// Queue, normally a StandIn. It is for tests and for trying Countersign by
-// hand. It accepts one made-up bearer token.
+// NewFakeServer serves Muster's five worker calls and its release call over
+// HTTP on top of any Queue, normally a StandIn. It is for tests and for
+// trying Countersign by hand. It accepts one made-up bearer token.
 //
 // It answers the way Muster's contract says: a refusal is a status and a
-// body {"error", "cause", "reason"}, an unknown field is refused, and every
-// request must carry "contract": "v1". The values of "cause" here are
-// placeholders. The client never reads them.
+// body {"error", "cause", "reason"} with the contract's causes, an unknown
+// field is refused, and every request must carry "contract": "v1".
 func NewFakeServer(q Queue, token string) http.Handler {
 	mux := http.NewServeMux()
 	handle := func(call string, fn func(r *http.Request, req fakeRequest) (int, any)) {
@@ -54,17 +53,19 @@ func NewFakeServer(q Queue, token string) http.Handler {
 		switch {
 		case err == nil:
 			return http.StatusOK, ok
+		case errors.Is(err, ErrLeaseNotHeld):
+			return fakeRefusal(http.StatusConflict, rule.Parse, "lease_not_held", "the lease is not held")
 		case errors.Is(err, ErrRefused):
-			return fakeRefusal(http.StatusConflict, rule.Parse, "not_held_or_not_allowed", "the lease is not held, or that move is not allowed")
+			return fakeRefusal(http.StatusConflict, rule.Parse, "move_not_allowed", "that move is not allowed")
 		}
-		return fakeRefusal(http.StatusServiceUnavailable, rule.Timeout, "try_later", "the call could not be answered in time")
+		return fakeRefusal(http.StatusServiceUnavailable, rule.Timeout, "busy", "too many calls at once")
 	}
 	malformed := func() (int, any) {
-		return fakeRefusal(http.StatusBadRequest, rule.Parse, "malformed", "a required field is missing or malformed")
+		return fakeRefusal(http.StatusBadRequest, rule.Parse, "missing_field", "a required field is missing or empty")
 	}
 
 	handle("lease", func(r *http.Request, req fakeRequest) (int, any) {
-		if req.Lease != nil || req.State != nil || req.Result != nil || req.Code != nil {
+		if req.ID != nil || req.Lease != nil || req.State != nil || req.Result != nil || req.Code != nil {
 			return malformed()
 		}
 		body, err := q.Lease(r.Context())
@@ -97,6 +98,12 @@ func NewFakeServer(q Queue, token string) http.Handler {
 		}
 		return answer(q.NeedsSubtool(r.Context(), *req.Lease), map[string]string{})
 	})
+	handle("release", func(r *http.Request, req fakeRequest) (int, any) {
+		if req.ID == nil || req.Lease != nil || req.State != nil || req.Result != nil || req.Code != nil {
+			return malformed()
+		}
+		return answer(q.Release(r.Context(), *req.ID), map[string]string{"id": *req.ID})
+	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		status, body := fakeRefusal(http.StatusNotFound, rule.Parse, "no_such_call", "no such call")
 		w.Header().Set("Content-Type", "application/json")
@@ -108,6 +115,7 @@ func NewFakeServer(q Queue, token string) http.Handler {
 
 type fakeRequest struct {
 	Contract *string         `json:"contract"`
+	ID       *string         `json:"id"`
 	Lease    *string         `json:"lease"`
 	State    *string         `json:"state"`
 	Result   json.RawMessage `json:"result"`
@@ -121,13 +129,13 @@ func fakeRefusal(status int, code rule.Code, cause, reason string) (int, any) {
 // fakeCheck applies the checks that come before the body is read.
 func fakeCheck(r *http.Request, token string) (int, any) {
 	if r.Method != http.MethodPost {
-		return fakeRefusal(http.StatusMethodNotAllowed, rule.Parse, "method", "this call does not accept that method")
+		return fakeRefusal(http.StatusMethodNotAllowed, rule.Parse, "wrong_method", "this call does not accept that method")
 	}
 	if got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); !ok || got != token {
-		return fakeRefusal(http.StatusUnauthorized, rule.Parse, "credential", "no valid credential was presented")
+		return fakeRefusal(http.StatusUnauthorized, rule.Parse, "no_credential", "no valid credential was presented")
 	}
 	if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
-		return fakeRefusal(http.StatusUnsupportedMediaType, rule.Parse, "content_type", "the content type must be application/json")
+		return fakeRefusal(http.StatusUnsupportedMediaType, rule.Parse, "wrong_type", "the content type must be application/json")
 	}
 	return 0, nil
 }
@@ -137,16 +145,16 @@ func fakeCheck(r *http.Request, token string) (int, any) {
 func fakeRead(r *http.Request, req *fakeRequest) (int, any) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequest+1))
 	if err != nil {
-		return fakeRefusal(http.StatusBadRequest, rule.Parse, "unreadable", "the request could not be read")
+		return fakeRefusal(http.StatusBadRequest, rule.Parse, "not_json", "the request could not be read")
 	}
 	if len(body) > maxRequest {
 		return fakeRefusal(http.StatusRequestEntityTooLarge, rule.Parse, "too_large", "the request is too large")
 	}
 	if strictjson.Decode(body, req) != nil || req.Contract == nil {
-		return fakeRefusal(http.StatusBadRequest, rule.Parse, "malformed", "a required field is missing or malformed")
+		return fakeRefusal(http.StatusBadRequest, rule.Parse, "bad_field", "a required field is missing or malformed")
 	}
 	if *req.Contract != ContractVersion {
-		return fakeRefusal(http.StatusUnprocessableEntity, rule.NeedsSubtool, "contract_version", "this contract version is not known")
+		return fakeRefusal(http.StatusUnprocessableEntity, rule.NeedsSubtool, "unknown_contract", "this contract version is not known")
 	}
 	return 0, nil
 }

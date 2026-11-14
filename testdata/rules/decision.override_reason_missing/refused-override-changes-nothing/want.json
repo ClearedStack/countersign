@@ -55,7 +55,7 @@
     {
       "seq": 1,
       "status": "acknowledged",
-      "lease": "PA-0042.1",
+      "lease": "PA-0042.1.1",
       "record": {
         "contract": "v1",
         "call": "complete",
@@ -85,7 +85,7 @@
     "ledger": [
       {
         "call": "complete",
-        "lease": "PA-0042.1",
+        "lease": "PA-0042.1.1",
         "id": "PA-0042",
         "state": "observed",
         "result": {

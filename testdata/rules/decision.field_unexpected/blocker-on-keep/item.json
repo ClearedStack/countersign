@@ -1,8 +1,0 @@
-{
-  "id": "PA-0003",
-  "kind": "release",
-  "state": "recorded",
-  "lane": "normal",
-  "held_worker": "sextant",
-  "held_code": "E_PARSE"
-}

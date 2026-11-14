@@ -135,7 +135,7 @@
     {
       "seq": 1,
       "status": "acknowledged",
-      "lease": "PA-0061.2",
+      "lease": "PA-0061.2.1",
       "record": {
         "contract": "v1",
         "call": "complete",
@@ -155,7 +155,7 @@
     {
       "seq": 2,
       "status": "acknowledged",
-      "lease": "PA-0060.1",
+      "lease": "PA-0060.1.1",
       "record": {
         "contract": "v1",
         "call": "complete",
@@ -175,7 +175,7 @@
     {
       "seq": 3,
       "status": "acknowledged",
-      "lease": "PA-0062.3",
+      "lease": "PA-0062.3.1",
       "record": {
         "contract": "v1",
         "call": "complete",
@@ -217,7 +217,7 @@
     "ledger": [
       {
         "call": "complete",
-        "lease": "PA-0061.2",
+        "lease": "PA-0061.2.1",
         "id": "PA-0061",
         "state": "approved",
         "result": {
@@ -238,7 +238,7 @@
       },
       {
         "call": "complete",
-        "lease": "PA-0060.1",
+        "lease": "PA-0060.1.1",
         "id": "PA-0060",
         "state": "approved",
         "result": {
@@ -259,7 +259,7 @@
       },
       {
         "call": "complete",
-        "lease": "PA-0062.3",
+        "lease": "PA-0062.3.1",
         "id": "PA-0062",
         "state": "observed",
         "result": {

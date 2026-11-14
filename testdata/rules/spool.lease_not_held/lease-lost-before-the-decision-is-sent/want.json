@@ -1,0 +1,140 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0075"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0076"
+        }
+      ]
+    },
+    {
+      "do": "decide",
+      "rule": "decision.approve",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "b5ab985652e7d55a5656408f9c2c3b6d",
+        "worker": "countersign",
+        "item": "PA-0075",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    },
+    {
+      "do": "requeue"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.lease_not_held",
+          "code": "E_PARSE",
+          "item": "PA-0075",
+          "seq": 1,
+          "fingerprint": "e6e60d2dd355a2b3"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "lease.lost",
+          "item": "PA-0076"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.resent",
+          "item": "PA-0075"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0076"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0075",
+          "seq": 1
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0076"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0075.3.2",
+      "record": {
+        "contract": "v1",
+        "call": "complete",
+        "id": "b5ab985652e7d55a5656408f9c2c3b6d",
+        "worker": "countersign",
+        "item": "PA-0075",
+        "at": "2026-01-05T10:00:00Z",
+        "kind": "item",
+        "outcome": "approve",
+        "from": "scored",
+        "to": "approved",
+        "lane": "normal",
+        "score": 82,
+        "recommendation": "approved"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0075",
+        "state": "approved",
+        "lane": "normal",
+        "status": "closed"
+      },
+      {
+        "id": "PA-0076",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "complete",
+        "lease": "PA-0075.3.2",
+        "id": "PA-0075",
+        "state": "approved",
+        "result": {
+          "contract": "v1",
+          "call": "complete",
+          "id": "b5ab985652e7d55a5656408f9c2c3b6d",
+          "worker": "countersign",
+          "item": "PA-0075",
+          "at": "2026-01-05T10:00:00Z",
+          "kind": "item",
+          "outcome": "approve",
+          "from": "scored",
+          "to": "approved",
+          "lane": "normal",
+          "score": 82,
+          "recommendation": "approved"
+        }
+      }
+    ],
+    "dispatched": []
+  }
+}

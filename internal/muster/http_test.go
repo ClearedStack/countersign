@@ -107,7 +107,7 @@ func TestFiveCallsAgainstTheFakeServer(t *testing.T) {
 	if body, err := h.Lease(ctx); err != nil || body != nil {
 		t.Fatalf("a fourth lease should be 204: %s %v", body, err)
 	}
-	if l1.Token != "PA-0001.1" || l1.Kind != "item" || l1.State != "scored" || l1.Attempt != 1 || l1.Expires != "2026-01-05T10:01:00Z" {
+	if l1.Token != "PA-0001.1.1" || l1.Kind != "item" || l1.State != "scored" || l1.Attempt != 1 || l1.Expires != "2026-01-05T10:01:00Z" {
 		t.Errorf("first lease: %+v", l1)
 	}
 	if it3.Kind != item.Proposal || it3.EditKind != "DATA" || it3.Change != "Fix the spelling." {
@@ -117,7 +117,7 @@ func TestFiveCallsAgainstTheFakeServer(t *testing.T) {
 	if err := h.Heartbeat(ctx, l1.Token); err != nil {
 		t.Errorf("heartbeat: %v", err)
 	}
-	if err := h.Heartbeat(ctx, "PA-0001.99"); !errors.Is(err, ErrRefused) {
+	if err := h.Heartbeat(ctx, "PA-0001.99.1"); !errors.Is(err, ErrLeaseNotHeld) {
 		t.Errorf("heartbeat on a lease never given: %v", err)
 	}
 	if err := h.NeedsSubtool(ctx, l1.Token); !errors.Is(err, ErrRefused) {
@@ -135,19 +135,25 @@ func TestFiveCallsAgainstTheFakeServer(t *testing.T) {
 	if err := h.Fail(ctx, l3.Token, rule.Parse); err != nil {
 		t.Errorf("fail: %v", err)
 	}
+	if err := h.Release(ctx, "PA-0001"); !errors.Is(err, ErrRefused) {
+		t.Errorf("release of an item that is not stopped: %v", err)
+	}
+	if err := h.Release(ctx, "EP-0001"); err != nil {
+		t.Errorf("release of the stopped step: %v", err)
+	}
 
 	snap := s.Snapshot()
 	states := map[string]string{}
 	for _, it := range snap.Items {
 		states[it.ID] = it.State + "/" + it.Status
 	}
-	want := map[string]string{"PA-0001": "parked/closed", "PA-0002": "observed/closed", "EP-0001": "pending_approval/held"}
+	want := map[string]string{"PA-0001": "parked/closed", "PA-0002": "observed/closed", "EP-0001": "pending_approval/waiting"}
 	for id, w := range want {
 		if states[id] != w {
 			t.Errorf("%s is %s, want %s", id, states[id], w)
 		}
 	}
-	if len(snap.Ledger) != 3 || snap.Ledger[0].Result == nil || snap.Ledger[0].Result.Blocker != "Waiting for a made-up table." {
+	if len(snap.Ledger) != 4 || snap.Ledger[3].Call != "release" || snap.Ledger[0].Result == nil || snap.Ledger[0].Result.Blocker != "Waiting for a made-up table." {
 		t.Errorf("ledger: %+v", snap.Ledger)
 	}
 }
@@ -166,6 +172,7 @@ func TestRequestsAreExactlyTheContract(t *testing.T) {
 	h.Fail(ctx, "PA-0001.1", rule.Parse)
 	h.Fail(ctx, "PA-0001.1", rule.Timeout)
 	h.NeedsSubtool(ctx, "PA-0001.1")
+	h.Release(ctx, "PA-0001")
 
 	want := []seen{
 		{"POST", "/v1/lease", "", "", `{"contract":"v1"}`},
@@ -174,6 +181,7 @@ func TestRequestsAreExactlyTheContract(t *testing.T) {
 		{"POST", "/v1/fail", "", "", `{"contract":"v1","lease":"PA-0001.1","code":"E_PARSE"}`},
 		{"POST", "/v1/fail", "", "", `{"contract":"v1","lease":"PA-0001.1","code":"E_TIMEOUT"}`},
 		{"POST", "/v1/needs_subtool", "", "", `{"contract":"v1","lease":"PA-0001.1"}`},
+		{"POST", "/v1/release", "", "", `{"contract":"v1","id":"PA-0001"}`},
 	}
 	got := rec.requests()
 	if len(got) != len(want) {
@@ -276,26 +284,37 @@ func TestNoProxyIsEverUsed(t *testing.T) {
 	}
 }
 
-func TestStatusesAreSortedIntoYesNoAndTryAgain(t *testing.T) {
-	refusal := `{"error":"E_PARSE","cause":"made-up","reason":"a made-up reason naming host 192.0.2.7"}`
+func TestAnswersAreSortedIntoYesNoAndTryAgain(t *testing.T) {
+	refusal := func(code, cause string) string {
+		return `{"error":"` + code + `","cause":"` + cause + `","reason":"a made-up reason naming host 192.0.2.7"}`
+	}
 	cases := []struct {
 		status int
 		body   string
 		want   error // for a call other than lease
 	}{
 		{200, `{"id":"PA-0001","state":"approved","next":"waybill"}`, nil},
-		{400, refusal, ErrRefused},
-		{409, refusal, ErrRefused},
-		{413, refusal, ErrRefused},
-		{401, refusal, ErrUnreachable}, // the credential, not the call
-		{403, refusal, ErrUnreachable},
-		{404, refusal, ErrUnreachable},
-		{405, refusal, ErrUnreachable},
-		{415, refusal, ErrUnreachable},
-		{422, `{"error":"E_NEEDS_SUBTOOL","cause":"made-up","reason":"made-up"}`, ErrUnreachable},
-		{429, `{"error":"E_TIMEOUT","cause":"made-up","reason":"made-up"}`, ErrUnreachable},
-		{500, refusal, ErrUnreachable},
-		{503, `{"error":"E_TIMEOUT","cause":"made-up","reason":"made-up"}`, ErrUnreachable},
+		// Refusals: 400 to 422.
+		{400, refusal("E_PARSE", "bad_field"), ErrRefused},
+		{401, refusal("E_PARSE", "no_credential"), ErrRefused},
+		{403, refusal("E_PARSE", "not_your_call"), ErrRefused},
+		{404, refusal("E_PARSE", "no_such_call"), ErrRefused},
+		{405, refusal("E_PARSE", "wrong_method"), ErrRefused},
+		{409, refusal("E_PARSE", "move_not_allowed"), ErrRefused},
+		{409, refusal("E_PARSE", "duplicate"), ErrRefused},
+		{409, `not JSON at all`, ErrRefused},
+		{413, refusal("E_PARSE", "too_large"), ErrRefused},
+		{415, refusal("E_PARSE", "wrong_type"), ErrRefused},
+		{422, refusal("E_NEEDS_SUBTOOL", "unknown_contract"), ErrRefused},
+		// 409 branches on its cause.
+		{409, refusal("E_PARSE", "lease_not_held"), ErrLeaseNotHeld},
+		{400, refusal("E_PARSE", "lease_not_held"), ErrRefused}, // the cause only counts on a 409
+		// Try again.
+		{429, refusal("E_TIMEOUT", "rate_limited"), ErrUnreachable},
+		{503, refusal("E_TIMEOUT", "busy"), ErrUnreachable},
+		{503, refusal("E_TIMEOUT", "store_slow"), ErrUnreachable},
+		{500, refusal("E_PARSE", "unexpected"), ErrUnreachable},
+		{502, `made-up gateway page`, ErrUnreachable},
 		{204, ``, ErrUnreachable}, // only a lease may be answered with nothing
 	}
 	for _, c := range cases {
@@ -308,23 +327,34 @@ func TestStatusesAreSortedIntoYesNoAndTryAgain(t *testing.T) {
 			"complete":      h.Complete(ctx, "PA-0001.1", item.Approved, []byte(`{}`)),
 			"fail":          h.Fail(ctx, "PA-0001.1", rule.Parse),
 			"needs_subtool": h.NeedsSubtool(ctx, "PA-0001.1"),
+			"release":       h.Release(ctx, "PA-0001"),
 		} {
 			if !errors.Is(err, c.want) || (c.want == nil && err != nil) {
-				t.Errorf("%d on %s: got %v, want %v", c.status, name, err, c.want)
+				t.Errorf("%d %.40s on %s: got %v, want %v", c.status, c.body, name, err, c.want)
 			}
 			if err != nil && (strings.Contains(err.Error(), "192.0.2.7") || strings.Contains(err.Error(), srv.Listener.Addr().String())) {
 				t.Errorf("%d on %s: the error carries what the server said or where it is: %v", c.status, name, err)
 			}
 		}
-		// Lease: 200 with a body, 204 for nothing, anything else try again.
+		// Lease: 200 with a body, 204 for nothing.
 		body, err := h.Lease(ctx)
 		switch {
-		case c.status == 200 && (err != nil || string(body) != c.body):
-			t.Errorf("200 on lease: %s %v", body, err)
-		case c.status == 204 && (err != nil || body != nil):
-			t.Errorf("204 on lease: %s %v", body, err)
-		case c.status != 200 && c.status != 204 && !errors.Is(err, ErrUnreachable):
-			t.Errorf("%d on lease: %v", c.status, err)
+		case c.status == 200:
+			if err != nil || string(body) != c.body {
+				t.Errorf("200 on lease: %s %v", body, err)
+			}
+		case c.status == 204:
+			if err != nil || body != nil {
+				t.Errorf("204 on lease: %s %v", body, err)
+			}
+		case c.status >= 400 && c.status <= 422:
+			if !errors.Is(err, ErrRefused) {
+				t.Errorf("%d on lease: %v", c.status, err)
+			}
+		default:
+			if !errors.Is(err, ErrUnreachable) {
+				t.Errorf("%d on lease: %v", c.status, err)
+			}
 		}
 		srv.Close()
 	}
@@ -434,7 +464,9 @@ func TestFakeServerRefusesWhatTheContractRefuses(t *testing.T) {
 		{"wrong credential", "POST", "/v1/lease", "Bearer someone-else", js, `{"contract":"v1"}`, 401, "E_PARSE"},
 		{"wrong method", "GET", "/v1/lease", bearer, js, ``, 405, "E_PARSE"},
 		{"wrong content type", "POST", "/v1/lease", bearer, "text/plain", `{"contract":"v1"}`, 415, "E_PARSE"},
-		{"no such call", "POST", "/v1/release", bearer, js, `{"contract":"v1"}`, 404, "E_PARSE"},
+		{"no such call", "POST", "/v1/made-up", bearer, js, `{"contract":"v1"}`, 404, "E_PARSE"},
+		{"release without an id", "POST", "/v1/release", bearer, js, `{"contract":"v1"}`, 400, "E_PARSE"},
+		{"release of an item that is not stopped", "POST", "/v1/release", bearer, js, `{"contract":"v1","id":"PA-0001"}`, 409, "E_PARSE"},
 		{"not JSON", "POST", "/v1/lease", bearer, js, `lease please`, 400, "E_PARSE"},
 		{"no contract", "POST", "/v1/lease", bearer, js, `{}`, 400, "E_PARSE"},
 		{"unknown field", "POST", "/v1/lease", bearer, js, `{"contract":"v1","worker":"countersign"}`, 400, "E_PARSE"},

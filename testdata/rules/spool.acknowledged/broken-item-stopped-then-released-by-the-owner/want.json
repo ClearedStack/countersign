@@ -1,0 +1,134 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.field_missing",
+          "code": "E_PARSE",
+          "item": "PA-0056",
+          "fingerprint": "5b505a0e011646d1"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.accept",
+          "item": "PA-0057"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0056",
+          "seq": 1
+        }
+      ]
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick"
+    },
+    {
+      "do": "replace"
+    },
+    {
+      "do": "release",
+      "rule": "decision.release",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "f520a7dcf29b89ded5a23b788648f97c",
+        "worker": "countersign",
+        "item": "PA-0056",
+        "at": "2026-01-05T10:00:20Z",
+        "reason": "Assay's result was corrected."
+      }
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:40Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0056",
+          "seq": 2
+        },
+        {
+          "at": "2026-01-05T10:00:40Z",
+          "rule": "intake.accept",
+          "item": "PA-0056"
+        }
+      ]
+    }
+  ],
+  "pending": [
+    "PA-0056",
+    "PA-0057"
+  ],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0056.1.1",
+      "record": {
+        "contract": "v1",
+        "call": "fail",
+        "id": "e47ca4e30a8e9f60c5c58d9f3129a55b",
+        "worker": "countersign",
+        "item": "PA-0056",
+        "at": "2026-01-05T10:00:00Z",
+        "code": "E_PARSE",
+        "rule": "intake.field_missing",
+        "fingerprint": "5b505a0e011646d1"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "f520a7dcf29b89ded5a23b788648f97c",
+        "worker": "countersign",
+        "item": "PA-0056",
+        "at": "2026-01-05T10:00:20Z",
+        "reason": "Assay's result was corrected."
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0057",
+        "state": "scored",
+        "lane": "normal",
+        "status": "leased"
+      },
+      {
+        "id": "PA-0056",
+        "state": "scored",
+        "lane": "urgent",
+        "status": "leased"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "fail",
+        "lease": "PA-0056.1.1",
+        "id": "PA-0056",
+        "state": "scored",
+        "code": "E_PARSE"
+      },
+      {
+        "call": "release",
+        "id": "PA-0056",
+        "state": "scored"
+      }
+    ],
+    "dispatched": []
+  }
+}

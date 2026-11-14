@@ -29,10 +29,12 @@ const maxOtherBody = 16 << 10
 // not repeat the address.
 var ErrConfig = errors.New("muster: the address must be a plain http or https URL")
 
-// HTTP is the client for a real Muster. It makes the five worker calls as
-// JSON over HTTP and presents the pod's ServiceAccount token.
+// HTTP is the client for a real Muster. It makes the five worker calls and
+// the release call as JSON over HTTP, and presents the pod's ServiceAccount
+// token.
 //
-// Its errors are ErrRefused and ErrUnreachable and nothing else. Whatever
+// Its errors are ErrRefused, ErrLeaseNotHeld and ErrUnreachable and nothing
+// else. Whatever
 // went wrong underneath is dropped, because it names an address.
 type HTTP struct {
 	base      string
@@ -95,6 +97,7 @@ func (h *HTTP) token() (string, bool) {
 
 type request struct {
 	Contract string          `json:"contract"`
+	ID       string          `json:"id,omitempty"`
 	Lease    string          `json:"lease,omitempty"`
 	State    item.State      `json:"state,omitempty"`
 	Result   json.RawMessage `json:"result,omitempty"`
@@ -132,14 +135,28 @@ func (h *HTTP) post(ctx context.Context, call string, req request, limit int64) 
 	return resp.StatusCode, got, nil
 }
 
-// refused reports whether a status is Muster turning the call itself down:
-// the request was not accepted as written (400, 413), or the lease is not
-// held or the move is not allowed (409). A missing or rejected credential
-// (401, 403) is not a refusal of the call: the same call may succeed once
-// the credential is right, so it is retried.
-func refused(status int) bool {
-	return status == http.StatusBadRequest || status == http.StatusConflict ||
-		status == http.StatusRequestEntityTooLarge
+// sortAnswer turns an answer that is not a success into one of the three errors.
+//
+//   - 429 and every 5xx say try later, and so does anything that is not an
+//     answer from Muster at all, such as a redirect: ErrUnreachable.
+//   - 409 with the cause lease_not_held: ErrLeaseNotHeld.
+//   - Every other status from 400 to 422 is a refusal: ErrRefused.
+//
+// The cause is one of Muster's fixed words. Nothing else from the body is
+// read, and nothing from it reaches an error.
+func sortAnswer(status int, body []byte) error {
+	if status < 400 || status > 422 {
+		return ErrUnreachable
+	}
+	if status == http.StatusConflict {
+		var refusal struct {
+			Cause string `json:"cause"`
+		}
+		if json.Unmarshal(body, &refusal) == nil && refusal.Cause == "lease_not_held" {
+			return ErrLeaseNotHeld
+		}
+	}
+	return ErrRefused
 }
 
 // Lease implements Queue.
@@ -159,21 +176,19 @@ func (h *HTTP) Lease(ctx context.Context) ([]byte, error) {
 	case http.StatusNoContent:
 		return nil, nil
 	}
-	return nil, ErrUnreachable
+	return nil, sortAnswer(status, nil)
 }
 
 // send makes a call whose answer matters only as yes, no or try again.
 func (h *HTTP) send(ctx context.Context, call string, req request) error {
-	status, _, err := h.post(ctx, call, req, maxOtherBody)
+	status, body, err := h.post(ctx, call, req, maxOtherBody)
 	switch {
 	case err != nil:
 		return err
 	case status == http.StatusOK:
 		return nil
-	case refused(status):
-		return ErrRefused
 	}
-	return ErrUnreachable
+	return sortAnswer(status, body)
 }
 
 // Heartbeat implements Queue.
@@ -194,4 +209,9 @@ func (h *HTTP) Fail(ctx context.Context, lease string, code rule.Code) error {
 // NeedsSubtool implements Queue.
 func (h *HTTP) NeedsSubtool(ctx context.Context, lease string) error {
 	return h.send(ctx, "needs_subtool", request{Lease: lease})
+}
+
+// Release implements Queue.
+func (h *HTTP) Release(ctx context.Context, id string) error {
+	return h.send(ctx, "release", request{ID: id})
 }

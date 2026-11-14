@@ -1,0 +1,140 @@
+{
+  "steps": [
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "intake.field_missing",
+          "code": "E_PARSE",
+          "item": "PA-0058",
+          "fingerprint": "f8c74042e6469184"
+        },
+        {
+          "at": "2026-01-05T10:00:00Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0058",
+          "seq": 1
+        }
+      ]
+    },
+    {
+      "do": "release",
+      "rule": "decision.release",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "b4e059207a8ae6cc06b91379567b441d",
+        "worker": "countersign",
+        "item": "PA-0058",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    },
+    {
+      "do": "advance"
+    },
+    {
+      "do": "tick",
+      "events": [
+        {
+          "at": "2026-01-05T10:00:20Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0058",
+          "seq": 2
+        },
+        {
+          "at": "2026-01-05T10:00:20Z",
+          "rule": "intake.field_missing",
+          "code": "E_PARSE",
+          "item": "PA-0058",
+          "fingerprint": "f8c74042e6469184"
+        },
+        {
+          "at": "2026-01-05T10:00:20Z",
+          "rule": "spool.acknowledged",
+          "item": "PA-0058",
+          "seq": 3
+        }
+      ]
+    }
+  ],
+  "pending": [],
+  "log": [
+    {
+      "seq": 1,
+      "status": "acknowledged",
+      "lease": "PA-0058.1.1",
+      "record": {
+        "contract": "v1",
+        "call": "fail",
+        "id": "c5d0fb6d752ff71131f18af4eeca2b4d",
+        "worker": "countersign",
+        "item": "PA-0058",
+        "at": "2026-01-05T10:00:00Z",
+        "code": "E_PARSE",
+        "rule": "intake.field_missing",
+        "fingerprint": "f8c74042e6469184"
+      }
+    },
+    {
+      "seq": 2,
+      "status": "acknowledged",
+      "record": {
+        "contract": "v1",
+        "call": "release",
+        "id": "b4e059207a8ae6cc06b91379567b441d",
+        "worker": "countersign",
+        "item": "PA-0058",
+        "at": "2026-01-05T10:00:00Z"
+      }
+    },
+    {
+      "seq": 3,
+      "status": "acknowledged",
+      "lease": "PA-0058.2.2",
+      "record": {
+        "contract": "v1",
+        "call": "fail",
+        "id": "6127c2b52ed336b5ab857c45924b4e6d",
+        "worker": "countersign",
+        "item": "PA-0058",
+        "at": "2026-01-05T10:00:20Z",
+        "code": "E_PARSE",
+        "rule": "intake.field_missing",
+        "fingerprint": "f8c74042e6469184"
+      }
+    }
+  ],
+  "muster": {
+    "items": [
+      {
+        "id": "PA-0058",
+        "state": "scored",
+        "lane": "urgent",
+        "status": "held"
+      }
+    ],
+    "ledger": [
+      {
+        "call": "fail",
+        "lease": "PA-0058.1.1",
+        "id": "PA-0058",
+        "state": "scored",
+        "code": "E_PARSE"
+      },
+      {
+        "call": "release",
+        "id": "PA-0058",
+        "state": "scored"
+      },
+      {
+        "call": "fail",
+        "lease": "PA-0058.2.2",
+        "id": "PA-0058",
+        "state": "scored",
+        "code": "E_PARSE"
+      }
+    ],
+    "dispatched": []
+  }
+}

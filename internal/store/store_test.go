@@ -36,7 +36,7 @@ func add(t *testing.T, s *Store, id string) {
 	if perr != nil {
 		t.Fatalf("item %s: %v", id, perr)
 	}
-	if err := s.Accept(id+".1", it); err != nil {
+	if _, err := s.Accept(id+".1.1", it); err != nil {
 		t.Fatalf("accept %s: %v", id, err)
 	}
 }
@@ -60,7 +60,7 @@ func TestDecisionSurvivesAReopen(t *testing.T) {
 
 	s = open(t, root) // as after a restart
 	out, err := s.Outbox()
-	if err != nil || len(out) != 1 || out[0].Record.Item != "PA-0001" || out[0].Status != Waiting || out[0].Lease != "PA-0001.1" {
+	if err != nil || len(out) != 1 || out[0].Record.Item != "PA-0001" || out[0].Status != Waiting || out[0].Lease != "PA-0001.1.1" {
 		t.Fatalf("outbox after reopen: %+v %v", out, err)
 	}
 	pending, _ := s.Pending()
@@ -75,7 +75,7 @@ func TestRefusedDecisionChangesNothing(t *testing.T) {
 	if perr != nil {
 		t.Fatal(perr)
 	}
-	if err := s.Accept("PA-0002.1", it); err != nil {
+	if _, err := s.Accept("PA-0002.1.1", it); err != nil {
 		t.Fatal(err)
 	}
 	_, err := s.Decide(decide.Decision{Item: "PA-0002", Outcome: item.Override}, at)
@@ -265,7 +265,7 @@ func TestReportSaysTheSameThingOnce(t *testing.T) {
 	add(t, s, "PA-0001")
 	perr := rule.Fail(rule.IntakeKindUnfamiliar, "PA-0001")
 
-	rec, err := s.Report("PA-0001.2", perr, at)
+	rec, err := s.Report("PA-0001.2.2", perr, at)
 	if err != nil || rec == nil || rec.Call != "needs_subtool" || rec.Code != "E_NEEDS_SUBTOOL" {
 		t.Fatalf("first report: %+v %v", rec, err)
 	}
@@ -291,5 +291,91 @@ func TestReportSaysTheSameThingOnce(t *testing.T) {
 	out, _ := s.Outbox()
 	if len(out) != 1 || out[0].Lease != "PA-0001.5" {
 		t.Errorf("outbox: %+v", out)
+	}
+}
+
+func TestALostLeaseKeepsTheDecisionForTheNextLease(t *testing.T) {
+	s := open(t, t.TempDir())
+	add(t, s, "PA-0001")
+	add(t, s, "PA-0002")
+	for _, id := range []string{"PA-0001", "PA-0002"} {
+		if _, err := s.Decide(decide.Decision{Item: id, Outcome: item.Approve}, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Unlease(1); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := s.Outbox()
+	if len(out) != 2 || out[0].Status != Unleased || out[1].Status != Waiting {
+		t.Fatalf("outbox: %+v", out)
+	}
+
+	// Muster offers the item again, unchanged: the decision takes the new
+	// lease, and the owner is not asked again.
+	it, _ := item.Parse(scored("PA-0001"))
+	arrival, err := s.Accept("PA-0001.5.2", it)
+	if err != nil || !arrival.Resent || arrival.Stale {
+		t.Fatalf("arrival: %+v %v", arrival, err)
+	}
+	if pending, _ := s.Pending(); len(pending) != 0 {
+		t.Errorf("the item was put before the owner again: %+v", pending)
+	}
+	out, _ = s.Outbox()
+	if len(out) != 2 || out[0].Seq != 1 || out[0].Status != Waiting || out[0].Lease != "PA-0001.5.2" || out[0].Record.Outcome != item.Approve {
+		t.Fatalf("outbox after the new lease: %+v", out)
+	}
+}
+
+func TestAnItemThatComesBackChangedSetsTheDecisionAside(t *testing.T) {
+	s := open(t, t.TempDir())
+	add(t, s, "PA-0001")
+	if _, err := s.Decide(decide.Decision{Item: "PA-0001", Outcome: item.Approve}, at); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Unlease(1); err != nil {
+		t.Fatal(err)
+	}
+	changed, perr := item.Parse([]byte(`{"id":"PA-0001","kind":"item","state":"screened_out","lane":"normal","title":"A made-up tool","screen_reason":"Fails a gate."}`))
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	arrival, err := s.Accept("PA-0001.6.1", changed)
+	if err != nil || arrival.Resent || !arrival.Stale {
+		t.Fatalf("arrival: %+v %v", arrival, err)
+	}
+	if out, _ := s.Outbox(); len(out) != 0 {
+		t.Errorf("the stale decision is still to be sent: %+v", out)
+	}
+	pending, _ := s.Pending()
+	if len(pending) != 1 || pending[0].Item.State != item.ScreenedOut || pending[0].Lease != "PA-0001.6.1" {
+		t.Errorf("inbox: %+v", pending)
+	}
+	log, _ := s.Log()
+	if len(log) != 1 || log[0].Status != Refused || log[0].Fingerprint != rule.Fail(rule.SpoolStale, "PA-0001").Fingerprint() {
+		t.Errorf("log: %+v", log)
+	}
+}
+
+func TestReleaseIsSpooledWithoutALease(t *testing.T) {
+	s := open(t, t.TempDir())
+	res, err := s.Release("PA-0007", "  The source was corrected.  ", at)
+	if err != nil || res.Rule != rule.DecisionRelease || res.Record.Call != "release" || res.Record.Item != "PA-0007" || res.Record.Reason != "The source was corrected." {
+		t.Fatalf("release: %+v %v", res, err)
+	}
+	out, _ := s.Outbox()
+	if len(out) != 1 || out[0].Lease != "" || out[0].Status != Waiting {
+		t.Fatalf("outbox: %+v", out)
+	}
+	for _, id := range []string{"EP-0001", "PA-1", "../x", ""} {
+		if _, err := s.Release(id, "", at); ruleOf(err) != rule.DecisionMalformed {
+			t.Errorf("Release(%q) = %v", id, err)
+		}
+	}
+	if _, err := s.Release("PA-0008", "bad \x1b[31m text", at); ruleOf(err) != rule.DecisionTextInvalid {
+		t.Errorf("reason with an escape: %v", err)
+	}
+	if out, _ := s.Outbox(); len(out) != 1 {
+		t.Errorf("a refused release was spooled")
 	}
 }
