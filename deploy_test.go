@@ -134,3 +134,75 @@ func TestDeployManifests(t *testing.T) {
 		}
 	}
 }
+
+func TestKoConfig(t *testing.T) {
+	if _, err := os.Stat("Dockerfile"); err == nil {
+		t.Error("Dockerfile must not exist; Countersign is built with ko")
+	}
+	raw, err := os.ReadFile(".ko.yaml")
+	if err != nil {
+		t.Fatalf(".ko.yaml: %v", err)
+	}
+	ko := string(raw)
+	if strings.Contains(ko, "\t") {
+		t.Error(".ko.yaml contains tab characters")
+	}
+	baseImage := regexp.MustCompile(`(?m)^defaultBaseImage:\s*\S+@sha256:[0-9a-f]{64}\s*$`)
+	if !baseImage.MatchString(ko) {
+		t.Error(".ko.yaml must pin defaultBaseImage by sha256 digest")
+	}
+	for _, want := range []string{
+		"defaultPlatforms:",
+		"- linux/arm64",
+		"- id: countersign",
+		"main: ./cmd/countersign",
+		"- CGO_ENABLED=0",
+		"- -trimpath",
+		"- -s",
+		"- -w",
+	} {
+		if !strings.Contains(ko, want) {
+			t.Errorf(".ko.yaml is missing %q", want)
+		}
+	}
+}
+
+func TestRepoRules(t *testing.T) {
+	gomod, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("go.mod: %v", err)
+	}
+	modText := string(gomod)
+	if !strings.Contains(modText, "module github.com/ClearedStack/countersign\n") {
+		t.Errorf("unexpected module path in go.mod:\n%s", modText)
+	}
+	if strings.Contains(modText, "require") {
+		t.Errorf("go.mod must have zero external dependencies:\n%s", modText)
+	}
+	if _, err := os.Stat("go.sum"); err == nil {
+		t.Error("go.sum must not exist when using only the Go standard library")
+	}
+
+	err = filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(b), "\u2014") {
+			t.Errorf("%s contains an em dash", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
