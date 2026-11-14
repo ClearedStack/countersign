@@ -273,6 +273,47 @@ func TestApplyWaybillKeepsTheWholeBodyWithinMusterLimit(t *testing.T) {
 	}
 }
 
+// recordSize is the size of the record Apply makes for the specification,
+// encoded as the worker sends it.
+func recordSize(t *testing.T, spec []byte) (int, *rule.Error) {
+	t.Helper()
+	res, perr := decide.Apply(scored(), decide.Decision{Item: "PA-0001", Outcome: item.Approve, Waybill: spec}, fuzzTime)
+	if perr != nil {
+		return 0, perr
+	}
+	b, err := json.Marshal(res.Record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(b), nil
+}
+
+func TestApplyWaybillRecordLimitIsExact(t *testing.T) {
+	// Each "<" is six bytes in the record and one in the file, so a
+	// specification well within the file limit can reach the record limit
+	// to the byte: k of them and m plain bytes add 6k+m to the record.
+	empty, perr := recordSize(t, withLabel(t, ""))
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	room := item.MaxResult - empty
+	if room < 6 {
+		t.Fatalf("no room for a label: %d", room)
+	}
+	label := func(extra int) []byte {
+		n := room + extra
+		return withLabel(t, strings.Repeat("<", n/6)+strings.Repeat("a", n%6))
+	}
+
+	got, perr := recordSize(t, label(0))
+	if perr != nil || got != item.MaxResult {
+		t.Fatalf("a record of exactly the limit: %d bytes, %v", got, perr)
+	}
+	if _, perr := recordSize(t, label(1)); perr == nil || perr.Rule != rule.DecisionMalformed {
+		t.Fatalf("a record one byte over the limit: %v", perr)
+	}
+}
+
 func FuzzParseWaybill(f *testing.F) {
 	seed, err := os.ReadFile(calculator)
 	if err != nil {

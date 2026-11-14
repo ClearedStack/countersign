@@ -34,6 +34,8 @@ Muster is Countersign's only dependency. Where an outcome below names another co
 
 1. **Tool Determinations Queue (`scored` and `screened_out` overrides):**
    - **Approve (Build) → `approved`:** Advances the candidate to Waybill for provenance stamping and clean-room spec compilation.
+     - **The owner attaches the specification.** `decide ID approve -waybill FILE` gives Countersign the specification the owner reviewed. Countersign checks that it is one JSON object in the form Waybill's parser accepts (see the README) and carries it unchanged, with white space removed, as `waybill` in the decision record and in the `result` of `complete`, which Waybill reads from `results.countersign`. Countersign does not write, change or judge the specification. The file is at most 48 KiB and the record as sent at most 63 KiB, so the `complete` call stays within Muster's 64 KiB body limit. A missing, oversized or malformed file refuses the decision as `E_PARSE` and nothing is recorded. The flag is allowed only on an approval of a `scored` candidate.
+     - **`review` cannot approve a candidate.** It cannot take a specification, so it refuses `approve` for a candidate and points to `decide`. Approving an edit proposal in `review` is unchanged.
    - **Link → `linked`:** Records an existing free, private external tool in the catalog (Chartroom) without rebuilding.
    - **Merge → `merged`:** Folds scope into an existing or planned parent tool repository.
    - **Park → `parked`:** Defers a viable idea with a named blocker for scheduled Tidegauge revisit.
@@ -107,6 +109,7 @@ Each change below was made when Countersign was first built, with the reason.
 | Countersign records decisions with Muster and calls no other component; the `pub.*` views are Logbook's. | The text read as if Countersign dispatched Bellbuoy and published views itself. The registry gives Muster as its only dependency, and the pod has no database credentials and a default-deny network. |
 | 4 KB is 4096 bytes of proposal text. A fingerprint is defined. Any failure that is not a clean refusal is a timeout. Records carry a content-derived identifier. | Each was needed to build the behaviour and was not stated. |
 | The overview's first link now points to "How we decide what to build". | The same address was given twice. |
+| An approval of a candidate carries the owner's specification as `waybill` (`decide ID approve -waybill FILE`), and `review` cannot approve a candidate. | Waybill builds only from `results.countersign.waybill`, and an approval without one failed at Waybill. The file and record limits keep the `complete` call within Muster's 64 KiB body limit. |
 | The state is spelled `screened_out`. | Muster's contract v1 spells it so, and the wire has to match. The lifecycle page still shows `screened-out`. |
 | The wire is Muster's contract v1, and the lease loop is described. | The contract now exists. Countersign follows it and replays its saved examples in its own tests. |
 | Stopped items and the Release decision were added. | Muster's contract gives Countersign the `release` call, so that the owner decides whether an item stopped with `E_PARSE` runs again. |

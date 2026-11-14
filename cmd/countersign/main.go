@@ -219,6 +219,11 @@ func readInput(e env, name string) ([]byte, bool) {
 // It takes a regular file of at most item.MaxWaybill bytes and nothing else:
 // not standard input, a directory or a pipe. Why it failed is not said.
 func readWaybill(name string) ([]byte, bool) {
+	// Opening a named pipe waits for a writer, so look before opening. The
+	// file can be swapped between the two, so look again once it is open.
+	if info, err := os.Stat(name); err != nil || !info.Mode().IsRegular() {
+		return nil, false
+	}
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, false
