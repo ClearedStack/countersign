@@ -1,0 +1,89 @@
+{
+  "contract_version": "v1",
+  "determination": {
+    "decision": "build"
+  },
+  "source": {
+    "product": "Quillmarsh Allowance Planner",
+    "vendor": "Quillmarsh Fictional Tools"
+  },
+  "title": "prorated daily allowance with a cap",
+  "authority": [
+    {
+      "id": "far_97_101",
+      "source": "FAR",
+      "citation": "FAR 97.101-1",
+      "title": "Made-up clause for tests: prorated daily allowance (FAR has no part 97)",
+      "url": "https://www.acquisition.gov/far/part-97"
+    }
+  ],
+  "tool_type": "calculator",
+  "tool": {
+    "inputs": [
+      {
+        "name": "days",
+        "type": "number",
+        "unit": "day",
+        "min": 0,
+        "max": 365
+      },
+      {
+        "name": "daily_amount",
+        "type": "number",
+        "unit": "USD",
+        "min": 0,
+        "max": 1000.0
+      },
+      {
+        "name": "cap",
+        "type": "number",
+        "unit": "USD",
+        "min": 0,
+        "max": 100000
+      }
+    ],
+    "outputs": [
+      {
+        "name": "allowance",
+        "type": "number",
+        "unit": "USD",
+        "formula": "min(days*daily_amount,cap)"
+      }
+    ],
+    "worked_examples": [
+      {
+        "authority": "far_97_101",
+        "inputs": {
+          "days": 4,
+          "daily_amount": 25.5,
+          "cap": 500
+        },
+        "expected": {
+          "allowance": 102
+        }
+      },
+      {
+        "authority": "far_97_101",
+        "inputs": {
+          "days": 30,
+          "daily_amount": 25.5,
+          "cap": 500
+        },
+        "expected": {
+          "allowance": 500.0
+        }
+      },
+      {
+        "authority": "far_97_101",
+        "inputs": {
+          "days": 0,
+          "daily_amount": 25.5,
+          "cap": 500
+        },
+        "expected": {
+          "allowance": 0
+        }
+      }
+    ]
+  }
+}

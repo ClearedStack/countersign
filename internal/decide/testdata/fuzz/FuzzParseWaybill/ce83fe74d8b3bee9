@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"title\":\"t\",\"tool_tYpe\":\"0000000000\",\"tool\":{},\"AuthoritY\":[{\"id\":\"0\",\"sourCe\":\"000\",\"CitAtion\":\"0\",\"title\":\"0\",\"url\":\"https://00000000000000000000000\"}]}")
